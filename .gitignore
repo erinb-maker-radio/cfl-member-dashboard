@@ -1,0 +1,36 @@
+# Environment variables and credentials
+.env
+
+# Data files (contain member information)
+*.csv
+*.xlsx
+dashboard_data.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Playwright
+.playwright/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

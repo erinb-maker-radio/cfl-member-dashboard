@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFL Member Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a9b94 0%, #17a2b8 50%, #1a9b94 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 15s ease infinite;
+            height: 100vh;
+            overflow: hidden;
+            padding: 10px;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #ffd43b;
+            box-shadow: 0 4px 15px rgba(255, 212, 59, 0.4);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #ffd43b;
+            font-weight: 800;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            letter-spacing: 1px;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 11px;
+            background: rgba(255, 212, 59, 0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #ffd43b 0%, #f5ba13 100%);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(255, 212, 59, 0.3);
+            margin-left: auto;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 6px 20px rgba(255, 212, 59, 0.5);
+        }
+
+        .dashboard-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            position: relative;
+            border: 2px solid transparent;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(255, 212, 59, 0.3);
+            border-color: #ffd43b;
+        }
+
+        /* Colored left borders for stat cards - CFL Colors */
+        .card.stat-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            border-radius: 12px 0 0 12px;
+        }
+
+        .stat-card.primary::before { background: linear-gradient(180deg, #1a9b94 0%, #17a2b8 100%); }
+        .stat-card.success::before { background: linear-gradient(180deg, #ffd43b 0%, #f5ba13 100%); }
+        .stat-card.success-light::before { background: linear-gradient(180deg, #ff6b9d 0%, #fe5196 100%); }
+        .stat-card.warning::before { background: linear-gradient(180deg, #ff6b9d 0%, #ffd43b 100%); }
+        .stat-card.danger::before { background: linear-gradient(180deg, #fe5196 0%, #c44569 100%); }
+        .stat-card.gray::before { background: linear-gradient(180deg, #1a9b94 0%, #0f7a73 100%); }
+
+        /* Stat Cards - Inside Chart Area - Stacked Vertically */
+        .stat-card {
+            padding: 8px 10px;
+        }
+
+        .stat-card:nth-child(4) {
+            grid-column: 11 / 13;
+            grid-row: 2;
+            align-self: start;
+            margin-top: 20px;
+            min-height: auto;
+            max-height: none;
+        }
+        .stat-card:nth-child(5) {
+            grid-column: 11 / 13;
+            grid-row: 2;
+            align-self: end;
+            margin-bottom: 20px;
+            min-height: auto;
+            max-height: none;
+        }
+
+        .stat-card .value {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+
+        .stat-card h3 {
+            font-size: 9px;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .subtitle {
+            margin-bottom: 3px;
+            font-size: 8px;
+        }
+
+        .stat-card .member-list {
+            font-size: 8px;
+            line-height: 1.2;
+        }
+
+        .stat-card h3 {
+            color: #718096;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            font-weight: 800;
+            color: #2d3748;
+            line-height: 1;
+        }
+
+        .stat-card .subtitle {
+            color: #a0aec0;
+        }
+
+        .stat-card .member-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .stat-card .member-list ul {
+            margin: 0;
+            padding-left: 14px;
+            color: #4a5568;
+        }
+
+        .stat-card .member-list li {
+            margin-bottom: 2px;
+        }
+
+        .stat-card .member-list .cancelled {
+            color: #f56565;
+        }
+
+        .stat-card .member-list .divider {
+            border-top: 1px solid #e2e8f0;
+            margin: 6px 0;
+            list-style: none;
+            padding: 0;
+        }
+
+        /* Member List Cards - Top Row - Emphasized */
+        .member-list-card {
+            grid-row: 1;
+            overflow: hidden;
+        }
+
+        .list-active { grid-column: 1 / 7; }
+        .list-new { grid-column: 7 / 10; }
+        .list-quit { grid-column: 10 / 13; }
+
+        /* Charts - Bottom Row */
+        .chart-card {
+            grid-row: 2;
+        }
+
+        .chart-membership { grid-column: 1 / 4; }
+        .chart-revenue { grid-column: 4 / 7; }
+
+        .list-volunteer {
+            grid-column: 7 / 11;
+            grid-row: 2;
+        }
+
+        .chart-card h2 {
+            font-size: 12px;
+            color: #2d3748;
+            margin-bottom: 4px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+        }
+
+        .member-list-card h2 {
+            font-size: 24px;
+            color: #2d3748;
+            margin-bottom: 12px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        /* Active Members - Professional Layout */
+        .list-active h2 {
+            font-size: 32px;
+            background: linear-gradient(135deg, #1a9b94 0%, #ffd43b 50%, #ff6b9d 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+            text-shadow: 0 2px 10px rgba(255, 212, 59, 0.3);
+        }
+
+        .list-active h2 span {
+            background: linear-gradient(135deg, #1a9b94 0%, #ffd43b 50%, #ff6b9d 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .member-list-card .list-container {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .member-list-card ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 8px;
+            column-gap: 16px;
+        }
+
+        /* Active Members - Dynamic Layout */
+        .list-active .list-container {
+            overflow-y: hidden;
+            padding: 0 8px;
+        }
+
+        .member-list-card li {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f7fafc;
+            font-size: 12px;
+            color: #2d3748;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+        }
+
+        .member-list-card li:nth-child(even) {
+            background: #fafbfc;
+        }
+
+        .member-list-card li:hover {
+            background: #edf2f7;
+            transform: translateX(4px);
+        }
+
+        /* Active Members - Enhanced List Items */
+        .list-active li {
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            border: none;
+        }
+
+        .list-active li:hover {
+            background: linear-gradient(90deg, #fff9e6 0%, #ffe8a3 100%);
+            transform: translateX(6px);
+            box-shadow: 0 2px 8px rgba(255, 212, 59, 0.3);
+        }
+
+        .list-active .member-name {
+            font-size: 15px;
+            color: #1a202c;
+        }
+
+        .member-list-card .member-name {
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .member-list-card .member-badge {
+            margin-left: 8px;
+        }
+
+        .member-list-card .divider-item {
+            background: transparent !important;
+            height: 24px;
+            padding: 0 !important;
+            margin: 8px 0 !important;
+            border: none !important;
+            position: relative;
+            grid-column: 1 / -1;
+        }
+
+        .member-list-card .divider-item::before {
+            content: 'CANCELLED MEMBERSHIPS';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 0 16px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #f56565;
+            letter-spacing: 1px;
+        }
+
+        .member-list-card .divider-item::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, #f56565 50%, transparent 100%);
+            transform: translateY(-50%);
+            z-index: -1;
+        }
+
+        .member-list-card .cancelled-item {
+            color: #f56565;
+            opacity: 0.8;
+        }
+
+        .list-active .cancelled-item {
+            background: #fff5f5 !important;
+            border: 1px solid #feb2b2 !important;
+        }
+
+        .list-active .cancelled-item:hover {
+            opacity: 1;
+            background: #fee !important;
+        }
+
+        .table-card h2 {
+            font-size: 12px;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* Scroll shadow indicator */
+        .table-container::before {
+            content: '';
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.05), transparent);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .member-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .member-table th {
+            background: #f7fafc;
+            padding: 6px 8px;
+            text-align: left;
+            font-size: 9px;
+            font-weight: 700;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .member-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #f7fafc;
+            color: #2d3748;
+            font-weight: 500;
+        }
+
+        .member-table tbody tr:nth-child(even) {
+            background: #fafbfc;
+        }
+
+        .member-table tbody tr:hover {
+            background: #edf2f7;
+        }
+
+        .member-table .divider-row {
+            background: #e2e8f0 !important;
+            height: 3px;
+        }
+
+        .member-table .divider-row td {
+            padding: 0;
+            border: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            border: 1.5px solid;
+        }
+
+        .badge-basic {
+            background: linear-gradient(135deg, #1a9b94 0%, #17a2b8 100%);
+            color: white;
+            border-color: #0f7a73;
+        }
+        .badge-pro {
+            background: linear-gradient(135deg, #ffd43b 0%, #f5ba13 100%);
+            color: #000;
+            border-color: #e6a900;
+        }
+        .badge-volunteer {
+            background: linear-gradient(135deg, #ff6b9d 0%, #fe5196 100%);
+            color: white;
+            border-color: #e03d82;
+        }
+        .badge-other {
+            background: linear-gradient(135deg, #f3f4f6 0%, #d1d5db 100%);
+            color: #374151;
+            border-color: #9ca3af;
+        }
+
+        .status-active {
+            color: #48bb78;
+            font-size: 9px;
+            font-weight: 600;
+        }
+
+        .status-cancelled {
+            background: linear-gradient(135deg, #ff6b9d 0%, #fe5196 100%);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 6px rgba(254, 81, 150, 0.3);
+            border: 1.5px solid #e03d82;
+        }
+
+        .cancelled-row {
+            color: #f56565 !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 16px;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="cfl-logo.webp" alt="Chico Fab Lab" class="logo">
+            <h1>CFL Member Dashboard</h1>
+            <p id="last-updated">Loading...</p>
+            <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
+        </div>
+
+        <div id="loading" class="loading">Loading dashboard data...</div>
+
+        <div id="dashboard" class="dashboard-grid" style="display: none;">
+            <!-- Top Row: Member Lists (EMPHASIZED) -->
+            <div class="card member-list-card list-active">
+                <h2>Active Members <span id="active-count" style="color: #667eea; font-weight: 800;"></span> <span id="total-members-display" style="color: #a0aec0; font-size: 12px; font-weight: 400; margin-left: 8px;"></span></h2>
+                <div class="list-container" id="active-list"></div>
+            </div>
+
+            <div class="card member-list-card list-new">
+                <h2>New Members <span id="new-count" style="color: #ed8936;">(0)</span></h2>
+                <div class="list-container" id="new-list"></div>
+            </div>
+
+            <div class="card member-list-card list-quit">
+                <h2>Recently Quit <span id="quit-count" style="color: #f56565;">(0)</span></h2>
+                <div class="list-container" id="quit-list"></div>
+            </div>
+
+            <!-- Bottom Row: Charts and Stat Cards -->
+            <div class="card chart-card chart-membership">
+                <h2>Membership Distribution</h2>
+                <div class="chart-container">
+                    <canvas id="membershipChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card chart-card chart-revenue">
+                <h2>Revenue by Type</h2>
+                <div class="chart-container">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card member-list-card list-volunteer">
+                <h2>Volunteers <span id="volunteer-count" style="color: #ed8936; font-weight: 800;"></span></h2>
+                <div class="list-container" id="volunteer-list"></div>
+            </div>
+
+            <div class="card stat-card success">
+                <h3>Monthly Revenue</h3>
+                <div class="value" id="monthly-revenue">$0</div>
+                <div class="subtitle">Last 30 days</div>
+                <div class="member-list" id="revenue-details"></div>
+            </div>
+
+            <div class="card stat-card success-light">
+                <h3>Projected Rev</h3>
+                <div class="value" id="projected-revenue">$0</div>
+                <div class="subtitle">Next 30 days</div>
+                <div class="member-list" id="projection-details"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let membershipChart, revenueChart;
+
+        async function loadData() {
+            try {
+                const response = await fetch('dashboard_data.json');
+                const data = await response.json();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'grid';
+
+                // Update stats
+                const activeMembersText = data.total_active_members > data.ongoing_members
+                    ? `${data.ongoing_members} (${data.total_active_members})`
+                    : data.ongoing_members;
+
+                document.getElementById('monthly-revenue').textContent = `$${data.monthly_revenue.toFixed(2)}`;
+                document.getElementById('projected-revenue').textContent = `$${data.projected_revenue.toFixed(2)}`;
+                document.getElementById('last-updated').textContent = `Last updated: ${data.last_updated}`;
+
+                // Update counts
+                document.getElementById('active-count').textContent = data.ongoing_members;
+                document.getElementById('total-members-display').textContent = data.total_active_members > data.ongoing_members
+                    ? `(+${data.total_active_members - data.ongoing_members} cancelled)`
+                    : '';
+                document.getElementById('new-count').textContent = `(${data.new_members_30_days})`;
+                document.getElementById('quit-count').textContent = `(${data.members_quit_60_days})`;
+
+                // Populate stat card details
+                populateRevenueDetails(data);
+                populateProjectionDetails(data);
+
+                // Create charts
+                createMembershipChart(data.membership_breakdown);
+                createRevenueChart(data.revenue_by_type);
+
+                // Create member lists
+                createActiveList(data.active_member_list);
+                createNewList(data.new_member_list);
+                createQuitList(data.quit_member_list);
+                createVolunteerList(data.active_member_list);
+
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <h2 style="color: white;">Error loading data</h2>
+                    <p style="color: white;">Please run: python analyze_members.py</p>
+                    <p style="color: #ff6b6b; margin-top: 10px;">${error.message}</p>
+                `;
+            }
+        }
+
+        function formatName(fullName) {
+            const parts = fullName.trim().split(' ');
+            if (parts.length === 1) return parts[0];
+            const firstName = parts[0];
+            const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
+            return `${firstName} ${lastInitial}.`;
+        }
+
+        function getResponsiveLayout(count, containerType = 'default') {
+            // Design rules for optimal layout - NO SCROLL BARS
+            if (containerType === 'active') {
+                // Active Members (larger container, 50% width, top row = taller)
+                // Estimate: ~600px height, ~500px width available
+                if (count <= 8) return { columns: 1, fontSize: '18px', padding: '14px 18px' };
+                if (count <= 16) return { columns: 2, fontSize: '16px', padding: '12px 16px' };
+                if (count <= 24) return { columns: 2, fontSize: '14px', padding: '10px 14px' };
+                if (count <= 36) return { columns: 3, fontSize: '13px', padding: '9px 12px' };
+                if (count <= 48) return { columns: 3, fontSize: '11px', padding: '7px 10px' };
+                if (count <= 60) return { columns: 4, fontSize: '10px', padding: '6px 8px' };
+                return { columns: 4, fontSize: '9px', padding: '5px 7px' };
+            } else if (containerType === 'volunteer') {
+                // Volunteers (bottom row, less height ~400px, ~400px width)
+                if (count <= 4) return { columns: 1, fontSize: '14px', padding: '10px 12px' };
+                if (count <= 8) return { columns: 2, fontSize: '13px', padding: '9px 11px' };
+                if (count <= 12) return { columns: 2, fontSize: '11px', padding: '7px 9px' };
+                if (count <= 16) return { columns: 3, fontSize: '10px', padding: '6px 8px' };
+                if (count <= 24) return { columns: 3, fontSize: '9px', padding: '5px 7px' };
+                return { columns: 4, fontSize: '8px', padding: '4px 6px' };
+            } else {
+                // New Members, Quit (top row, 25% width, tall ~600px)
+                // Estimate: ~600px height, ~250px width available
+                if (count <= 8) return { columns: 1, fontSize: '15px', padding: '11px 13px' };
+                if (count <= 16) return { columns: 1, fontSize: '13px', padding: '9px 11px' };
+                if (count <= 24) return { columns: 2, fontSize: '12px', padding: '8px 10px' };
+                if (count <= 32) return { columns: 2, fontSize: '11px', padding: '7px 9px' };
+                if (count <= 40) return { columns: 2, fontSize: '10px', padding: '6px 8px' };
+                return { columns: 3, fontSize: '9px', padding: '5px 7px' };
+            }
+        }
+
+        function createActiveList(members) {
+            const container = document.getElementById('active-list');
+            const activeMembers = members.filter(m => m.recurring_status !== 'Stopped');
+            const stoppedMembers = members.filter(m => m.recurring_status === 'Stopped');
+
+            if (members.length === 0) {
+                container.innerHTML = '<p style="color: #a0aec0; font-size: 11px; padding: 12px; text-align: center;">No active members</p>';
+                return;
+            }
+
+            const totalCount = activeMembers.length + stoppedMembers.length + (stoppedMembers.length > 0 ? 1 : 0); // +1 for divider
+            const layout = getResponsiveLayout(totalCount, 'active');
+
+            // Apply dynamic styles
+            const ulElement = container.querySelector('ul') || document.createElement('ul');
+            ulElement.style.gridTemplateColumns = `repeat(${layout.columns}, 1fr)`;
+
+            let html = '<ul style="grid-template-columns: repeat(' + layout.columns + ', 1fr);">';
+            activeMembers.forEach(m => {
+                html += `
+                    <li style="font-size: ${layout.fontSize}; padding: ${layout.padding};">
+                        <span class="member-name">${formatName(m.name)}</span>
+                    </li>`;
+            });
+            if (stoppedMembers.length > 0) {
+                html += '<li class="divider-item"></li>';
+                stoppedMembers.forEach(m => {
+                    html += `
+                        <li class="cancelled-item" style="font-size: ${layout.fontSize}; padding: ${layout.padding};">
+                            <span class="member-name">${formatName(m.name)}</span>
+                            <span class="status-cancelled member-badge">Cancelled</span>
+                        </li>`;
+                });
+            }
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+
+        function createNewList(members) {
+            const container = document.getElementById('new-list');
+            if (members.length === 0) {
+                container.innerHTML = '<p style="color: #a0aec0; font-size: 11px; padding: 12px; text-align: center;">No new members</p>';
+                return;
+            }
+
+            const layout = getResponsiveLayout(members.length, 'default');
+
+            let html = '<ul style="grid-template-columns: repeat(' + layout.columns + ', 1fr);">';
+            members.forEach(m => {
+                html += `
+                    <li style="font-size: ${layout.fontSize}; padding: ${layout.padding};">
+                        <span class="member-name">${formatName(m.name)}</span>
+                        <span class="badge member-badge ${getBadgeClass(m.membership_type)}">${m.membership_type}</span>
+                    </li>`;
+            });
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+
+        function createQuitList(members) {
+            const container = document.getElementById('quit-list');
+            if (members.length === 0) {
+                container.innerHTML = '<p style="color: #a0aec0; font-size: 11px; padding: 12px; text-align: center;">No recent quits</p>';
+                return;
+            }
+
+            const layout = getResponsiveLayout(members.length, 'default');
+
+            let html = '<ul style="grid-template-columns: repeat(' + layout.columns + ', 1fr);">';
+            members.forEach(m => {
+                const quitType = m.quit_reason.includes('Cancelled') ? 'Cancelled' : 'Inactive';
+                const quitColor = quitType === 'Cancelled' ? '#f56565' : '#ed8936';
+                html += `
+                    <li style="font-size: ${layout.fontSize}; padding: ${layout.padding};">
+                        <span class="member-name">${formatName(m.name)}</span>
+                        <span class="badge member-badge ${getBadgeClass(m.membership_type)}">${m.membership_type}</span>
+                    </li>`;
+            });
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+
+        function createVolunteerList(members) {
+            const container = document.getElementById('volunteer-list');
+            const volunteers = members.filter(m => m.membership_type === 'Volunteer' && m.recurring_status !== 'Stopped');
+
+            document.getElementById('volunteer-count').textContent = volunteers.length;
+
+            if (volunteers.length === 0) {
+                container.innerHTML = '<p style="color: #a0aec0; font-size: 11px; padding: 12px; text-align: center;">No volunteers</p>';
+                return;
+            }
+
+            const layout = getResponsiveLayout(volunteers.length, 'volunteer');
+
+            let html = '<ul style="grid-template-columns: repeat(' + layout.columns + ', 1fr);">';
+            volunteers.forEach(m => {
+                html += `
+                    <li style="font-size: ${layout.fontSize}; padding: ${layout.padding};">
+                        <span class="member-name">${formatName(m.name)}</span>
+                    </li>`;
+            });
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+
+        function populateRevenueDetails(data) {
+            const container = document.getElementById('revenue-details');
+            const avgRevenue = data.ongoing_members > 0 ? data.monthly_revenue / data.ongoing_members : 0;
+            container.innerHTML = `
+                <div style="font-size: 9px; color: #718096; margin-top: 4px;">
+                    <div>Avg/member: <strong style="color: #48bb78;">$${avgRevenue.toFixed(2)}</strong></div>
+                </div>
+            `;
+        }
+
+        function populateProjectionDetails(data) {
+            const container = document.getElementById('projection-details');
+            const change = data.projected_revenue - data.monthly_revenue;
+            const changePercent = data.monthly_revenue > 0 ? (change / data.monthly_revenue * 100) : 0;
+            const arrow = change >= 0 ? '↑' : '↓';
+            const color = change >= 0 ? '#48bb78' : '#f56565';
+
+            container.innerHTML = `
+                <div style="font-size: 9px; color: #718096; margin-top: 4px;">
+                    <div style="color: ${color}; font-weight: 600;">
+                        ${arrow} ${Math.abs(changePercent).toFixed(1)}%
+                    </div>
+                </div>
+            `;
+        }
+
+
+        function createMembershipChart(data) {
+            const ctx = document.getElementById('membershipChart').getContext('2d');
+            if (membershipChart) membershipChart.destroy();
+
+            membershipChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: ['#667eea', '#48bb78', '#ed8936', '#f56565'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 4,
+                                font: { size: 10, weight: '600' },
+                                color: '#2d3748'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: 5
+                    }
+                }
+            });
+        }
+
+        function createRevenueChart(data) {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            if (revenueChart) revenueChart.destroy();
+
+            const colors = {
+                'Basic': '#667eea',
+                'Pro': '#48bb78',
+                'Volunteer': '#ed8936',
+                'Other': '#718096'
+            };
+
+            const backgroundColors = Object.keys(data).map(key => colors[key] || '#718096');
+
+            revenueChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: Object.values(data),
+                        backgroundColor: backgroundColors,
+                        borderRadius: 6,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Revenue: $${context.parsed.y.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: { size: 9, weight: '600' },
+                                color: '#718096',
+                                callback: v => '$' + v.toFixed(0)
+                            },
+                            grid: {
+                                color: '#f0f0f0'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 10, weight: '600' },
+                                color: '#2d3748'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: { top: 5, bottom: 5, left: 5, right: 5 }
+                    }
+                }
+            });
+        }
+
+
+        function getBadgeClass(type) {
+            const map = { 'Basic': 'badge-basic', 'Pro': 'badge-pro', 'Volunteer': 'badge-volunteer' };
+            return map[type] || 'badge-other';
+        }
+
+        loadData();
+        setInterval(loadData, 300000);
+    </script>
+</body>
+</html>
