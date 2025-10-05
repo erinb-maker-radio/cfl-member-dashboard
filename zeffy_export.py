@@ -30,7 +30,12 @@ ZEFFY_EMAIL = os.getenv('ZEFFY_EMAIL')
 ZEFFY_PASSWORD = os.getenv('ZEFFY_PASSWORD')
 ZEFFY_LOGIN_URL = os.getenv('ZEFFY_LOGIN_URL', 'https://www.zeffy.com/login')
 ZEFFY_PAYMENTS_URL = os.getenv('ZEFFY_PAYMENTS_URL', 'https://www.zeffy.com/en-US/o/fundraising/payments')
-DOWNLOAD_FOLDER = os.getenv('DOWNLOAD_FOLDER', r'C:\Users\erin\Zeffy_Exports')
+
+# Auto-detect environment
+if os.name == 'nt':  # Windows
+    DOWNLOAD_FOLDER = os.getenv('DOWNLOAD_FOLDER', r'C:\Users\erin\Zeffy_Exports')
+else:  # Linux/Server
+    DOWNLOAD_FOLDER = os.getenv('DOWNLOAD_FOLDER', '/var/www/cfl-member-dashboard/exports')
 
 # Validate required environment variables
 if not ZEFFY_EMAIL or not ZEFFY_PASSWORD:
