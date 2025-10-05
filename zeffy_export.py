@@ -104,13 +104,23 @@ async def download_zeffy_payments():
             print("Clicking Next button...")
             next_button = 'button:has-text("Next")'
             await page.click(next_button)
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(3000)
+
+            # Debug screenshot after clicking Next
+            await page.screenshot(path='/var/www/cfl-member-dashboard/exports/after_next.png')
 
             # Find and fill password field on next screen
             print("Entering password...")
             password_selector = 'input[type="password"], input[name="password"], input[id*="password"]'
-            await page.wait_for_selector(password_selector, timeout=10000)
-            await page.fill(password_selector, ZEFFY_PASSWORD)
+
+            # Try to wait for password field with better error handling
+            try:
+                await page.wait_for_selector(password_selector, timeout=10000)
+                await page.fill(password_selector, ZEFFY_PASSWORD)
+            except:
+                # Take screenshot if password field not found
+                await page.screenshot(path='/var/www/cfl-member-dashboard/exports/password_not_found.png')
+                raise Exception("Password field not found. Check after_next.png and password_not_found.png")
 
             # Click Confirm button to login
             print("Clicking Confirm button...")
