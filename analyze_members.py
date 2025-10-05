@@ -256,11 +256,51 @@ def analyze_payments(file_path):
     new_member_list_unique = deduplicate_by_name(new_member_list)
     quit_member_list_unique = deduplicate_by_name(quit_member_list)
 
-    # Calculate counts for ongoing vs cancelled members
-    # Ongoing members = NOT stopped recurring status
-    ongoing_members = [m for m in active_member_list_unique if m.get('recurring_status') != 'Stopped']
-    ongoing_count = len(ongoing_members)
+    # Categorize members into: Active, Late, and Cancelled
+    # Active = paid in last 30 days AND recurring not stopped
+    active_paid_members = [m for m in active_member_list_unique if m.get('recurring_status') != 'Stopped']
+
+    # Late on Payment = recurring NOT stopped but no payment in last 30 days
+    late_member_list = []
+    for email in df_memberships[contact_col].unique():
+        member_data = df_memberships[df_memberships[contact_col] == email].sort_values(date_col)
+        last_payment = member_data[date_col].max()
+        days_since_last = (now - last_payment).days
+
+        # Check if recurring is active (not stopped)
+        recurring_status = 'Unknown'
+        if recurring_col and not member_data.empty:
+            recurring_status = member_data[recurring_col].iloc[-1] if not pd.isna(member_data[recurring_col].iloc[-1]) else 'Unknown'
+
+        # Late if: recurring not stopped AND last payment was 30-90 days ago
+        if recurring_status != 'Stopped' and 30 < days_since_last <= 90:
+            membership_type = member_data['Membership Type'].iloc[-1]
+
+            # Get name
+            name = email
+            if first_name_col and last_name_col:
+                first = member_data[first_name_col].iloc[-1] if not pd.isna(member_data[first_name_col].iloc[-1]) else ''
+                last = member_data[last_name_col].iloc[-1] if not pd.isna(member_data[last_name_col].iloc[-1]) else ''
+                if first or last:
+                    name = f"{first} {last}".strip()
+
+            late_member_list.append({
+                'name': name,
+                'email': email,
+                'membership_type': membership_type,
+                'last_payment': last_payment.strftime('%Y-%m-%d'),
+                'days_since_last': int(days_since_last),
+                'recurring_status': recurring_status
+            })
+
+    # Sort late members by days since last payment
+    late_member_list.sort(key=lambda x: x['days_since_last'])
+    late_member_list_unique = deduplicate_by_name(late_member_list)
+
+    # Cancelled members = recurring status is "Stopped" (already in active list if within 30 days)
+    ongoing_count = len(active_paid_members)
     total_active_count = len(active_member_list_unique)  # Includes cancelled but still active
+    late_count = len(late_member_list_unique)
 
     # Calculate projected revenue for current month in progress
     # Based on ongoing members' average monthly payment from last complete month
@@ -297,13 +337,15 @@ def analyze_payments(file_path):
         'projected_revenue_month': current_month_name,  # Month name for projection
         'revenue_by_type': {k: float(v) for k, v in revenue_by_type.items()},
         'members_quit_60_days': len(quit_member_list_unique),  # Count unique names
+        'members_late_payment': late_count,  # Count of late members
         'avg_payment_by_type': {k: float(v) for k, v in avg_payment_by_type.items()},
         'monthly_trend': monthly_trend,
         'total_payments': len(df_success),
         'new_members_30_days': len(new_member_list_unique),  # Count unique names
         'active_member_list': active_member_list_unique,
         'new_member_list': new_member_list_unique,
-        'quit_member_list': quit_member_list_unique
+        'quit_member_list': quit_member_list_unique,
+        'late_member_list': late_member_list_unique  # New late payment list
     }
 
     return dashboard_data

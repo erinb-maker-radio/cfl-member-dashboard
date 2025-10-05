@@ -581,8 +581,8 @@
             </div>
 
             <div class="card member-list-card list-quit">
-                <h2>Recently Quit <span id="quit-count" style="color: #f56565;">(0)</span></h2>
-                <div class="list-container" id="quit-list"></div>
+                <h2>Late on Payment <span id="late-count" style="color: #ed8936;">(0)</span></h2>
+                <div class="list-container" id="late-list"></div>
             </div>
 
             <!-- Bottom Row: Charts and Stat Cards -->
@@ -649,7 +649,7 @@
                     ? `(+${data.total_active_members - data.ongoing_members} cancelled)`
                     : '';
                 document.getElementById('new-count').textContent = `(${data.new_members_30_days})`;
-                document.getElementById('quit-count').textContent = `(${data.members_quit_60_days})`;
+                document.getElementById('late-count').textContent = `(${data.members_late_payment || 0})`;
 
                 // Populate stat card details
                 populateRevenueDetails(data);
@@ -662,7 +662,7 @@
                 // Create member lists
                 createActiveList(data.active_member_list);
                 createNewList(data.new_member_list);
-                createQuitList(data.quit_member_list);
+                createLateList(data.late_member_list || []);
                 createVolunteerList(data.active_member_list);
 
             } catch (error) {
@@ -773,10 +773,10 @@
             container.innerHTML = html;
         }
 
-        function createQuitList(members) {
-            const container = document.getElementById('quit-list');
+        function createLateList(members) {
+            const container = document.getElementById('late-list');
             if (members.length === 0) {
-                container.innerHTML = '<p style="color: #a0aec0; font-size: 11px; padding: 12px; text-align: center;">No recent quits</p>';
+                container.innerHTML = '<p style="color: #a0aec0; font-size: 11px; padding: 12px; text-align: center;">All payments up to date!</p>';
                 return;
             }
 
@@ -784,12 +784,12 @@
 
             let html = '<ul style="grid-template-columns: repeat(' + layout.columns + ', 1fr);">';
             members.forEach(m => {
-                const quitType = m.quit_reason.includes('Cancelled') ? 'Cancelled' : 'Inactive';
-                const quitColor = quitType === 'Cancelled' ? '#f56565' : '#ed8936';
+                const daysLate = m.days_since_last - 30;
                 html += `
                     <li style="font-size: ${layout.fontSize}; padding: ${layout.padding};">
                         <span class="member-name">${formatName(m.name)}</span>
                         <span class="badge member-badge ${getBadgeClass(m.membership_type)}">${m.membership_type}</span>
+                        <span style="color: #ed8936; font-size: 10px; margin-left: 4px;">${daysLate}d late</span>
                     </li>`;
             });
             html += '</ul>';
