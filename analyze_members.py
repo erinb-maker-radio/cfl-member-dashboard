@@ -24,9 +24,22 @@ else:  # Linux/Server
     OUTPUT_FILE = '/var/www/cfl-member-dashboard/exports/dashboard_data.json'
 
 def get_latest_export_file():
-    """Find the most recent Zeffy export file"""
+    """Find the payment data file (prefer master database if exists)"""
+
+    # Auto-detect master database path
+    if os.name == 'nt':  # Windows
+        master_db = Path(r'C:\Users\erin\CFL Member Dashboard\payment_history_master.xlsx')
+    else:  # Linux/Server
+        master_db = Path('/var/www/cfl-member-dashboard/exports/payment_history_master.xlsx')
+
+    # Use master database if it exists
+    if master_db.exists():
+        print(f"Using master database: {master_db}")
+        return master_db
+
+    # Otherwise fall back to latest export
     export_path = Path(EXPORT_FOLDER)
-    files = list(export_path.glob('zeffy-payments-*.csv'))
+    files = list(export_path.glob('zeffy-payments-*.csv')) + list(export_path.glob('zeffy-payments-*.xlsx'))
 
     if not files:
         raise FileNotFoundError(f"No export files found in {EXPORT_FOLDER}")
