@@ -107,11 +107,31 @@ async def download_zeffy_payments():
             await page.goto(ZEFFY_PAYMENTS_URL, wait_until='domcontentloaded', timeout=60000)
             await page.wait_for_timeout(5000)  # Wait for page to fully render
 
-            # Step 4: Click Export button
+            # Step 4: Click Export button - try multiple selectors
             print("Clicking Export button...")
-            export_button_selector = 'button:has-text("Export")'
-            await page.wait_for_selector(export_button_selector, timeout=10000)
-            await page.click(export_button_selector)
+            export_button_selectors = [
+                'button:has-text("Export")',
+                'button[aria-label*="Export"]',
+                'button:text-is("Export")',
+                '[data-testid*="export"]',
+                'button:text("Export")',
+            ]
+
+            export_clicked = False
+            for selector in export_button_selectors:
+                try:
+                    await page.wait_for_selector(selector, timeout=3000)
+                    await page.click(selector)
+                    export_clicked = True
+                    print(f"✓ Clicked export button using selector: {selector}")
+                    break
+                except:
+                    continue
+
+            if not export_clicked:
+                # Take screenshot for debugging
+                await page.screenshot(path='/var/www/cfl-member-dashboard/exports/debug_screenshot.png')
+                raise Exception("Could not find Export button. Screenshot saved to exports/debug_screenshot.png")
 
             # Wait for export modal to appear
             await page.wait_for_timeout(1000)
