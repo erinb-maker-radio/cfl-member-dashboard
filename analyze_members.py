@@ -69,10 +69,10 @@ def analyze_payments(file_path):
     date_col = 'Payment Date' if 'Payment Date' in df.columns else df.columns[0]
     df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
 
-    # Get current date and 60 days ago
+    # Get current date and 30 days ago
     now = datetime.now()
-    sixty_days_ago = now - timedelta(days=60)
     thirty_days_ago = now - timedelta(days=30)
+    sixty_days_ago = now - timedelta(days=60)  # Still used for quit members
 
     # Filter for successful payments only
     if 'Payment Status' in df.columns:
@@ -94,8 +94,8 @@ def analyze_payments(file_path):
     # Get amount column
     amount_col = 'Total Amount' if 'Total Amount' in df.columns else 'Amount'
 
-    # Find active members (paid in last 60 days) - only membership payments
-    recent_payments = df_memberships[df_memberships[date_col] >= sixty_days_ago]
+    # Find active members (paid in last 30 days) - only membership payments
+    recent_payments = df_memberships[df_memberships[date_col] >= thirty_days_ago]
 
     # Get unique members (by email or contact)
     contact_col = 'Email' if 'Email' in df.columns else 'Contact'
