@@ -85,52 +85,31 @@ async def download_zeffy_payments():
                 await page.goto(ZEFFY_PAYMENTS_URL, wait_until='domcontentloaded', timeout=60000)
                 await page.wait_for_timeout(3000)
 
-                # Set custom date range to get all historical data (from 2024)
-                print("Setting custom date range to get all historical data...")
+                # Select "2024" from date dropdown to get all historical data
+                print("Selecting 2024 date filter to get all historical data...")
                 try:
-                    # Click the date range input/button
-                    date_input_selectors = [
-                        'input[placeholder*="Add a date range"]',
-                        'button:has-text("Add a date range")',
-                        '[data-testid*="date-range"]',
-                    ]
+                    # Click the date range dropdown
+                    await page.click('input[placeholder*="Add a date range"]', timeout=3000)
+                    await page.wait_for_timeout(1000)
 
-                    for selector in date_input_selectors:
-                        try:
-                            await page.click(selector, timeout=2000)
-                            print(f"✓ Clicked date range selector: {selector}")
-                            await page.wait_for_timeout(1000)
+                    # Click "2024" option from the dropdown
+                    await page.click('button:has-text("2024")', timeout=3000)
+                    print("✓ Selected 2024 date filter")
+                    await page.wait_for_timeout(3000)  # Wait for page to reload with 2024 data
 
-                            # Click "Custom date range" option if dropdown appeared
-                            try:
-                                await page.click('button:has-text("Custom date range")', timeout=2000)
-                                await page.wait_for_timeout(500)
-                            except:
-                                pass
-
-                            # Type start date (Jan 1, 2024)
-                            await page.fill('input[placeholder*="start"], input[aria-label*="start"]', '01/01/2024', timeout=2000)
-                            await page.wait_for_timeout(500)
-
-                            # Type or select end date (today)
-                            await page.fill('input[placeholder*="end"], input[aria-label*="end"]', '12/31/2025', timeout=2000)
-                            await page.wait_for_timeout(500)
-
-                            # Press Enter or click Apply
-                            await page.keyboard.press('Enter')
-                            await page.wait_for_timeout(3000)
-
-                            print("✓ Set custom date range: 01/01/2024 - 12/31/2025")
-
-                            # Take screenshot to verify
-                            await page.screenshot(path='/var/www/cfl-member-dashboard/exports/after_date_range.png')
-                            print("📸 Screenshot saved: after_date_range.png")
-                            break
-                        except Exception as e:
-                            continue
+                    # Take screenshot to verify
+                    await page.screenshot(path='/var/www/cfl-member-dashboard/exports/after_2024_filter.png')
+                    print("📸 Screenshot saved: after_2024_filter.png")
 
                 except Exception as e:
-                    print(f"⚠ Could not set custom date range: {e}")
+                    print(f"⚠ Could not set 2024 filter: {e}")
+                    print("Attempting to clear filter instead...")
+                    try:
+                        await page.click('button:has-text("Clear")', timeout=2000)
+                        await page.wait_for_timeout(2000)
+                        print("✓ Cleared filter")
+                    except:
+                        print("⚠ Could not modify date filter, exporting visible data only")
             else:
                 # Step 1: Navigate to login page
                 print("Navigating to login page...")
