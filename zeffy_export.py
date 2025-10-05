@@ -92,6 +92,10 @@ async def download_zeffy_payments():
                     await page.click('button:has-text("Clear")', timeout=3000)
                     print("✓ Cleared date filter")
                     await page.wait_for_timeout(3000)  # Wait for page to reload with all data
+
+                    # Take screenshot to verify date range
+                    await page.screenshot(path='/var/www/cfl-member-dashboard/exports/after_clear_filter.png')
+                    print("📸 Screenshot saved: after_clear_filter.png")
                 except Exception as e:
                     print(f"⚠ Could not clear date filter: {e}")
                     print("Trying alternative method...")
