@@ -564,7 +564,7 @@
             <img src="cfl-logo.webp" alt="Chico Fab Lab" class="logo">
             <h1>CFL Member Dashboard</h1>
             <p id="last-updated">Loading...</p>
-            <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
+            <button class="refresh-btn" onclick="refreshData()">🔄 Refresh Data</button>
         </div>
 
         <div id="loading" class="loading">Loading dashboard data...</div>
@@ -629,6 +629,32 @@
 
     <script>
         let membershipChart, revenueChart;
+
+        async function refreshData() {
+            // Show loading state
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+
+            try {
+                // Trigger backend update
+                const updateResponse = await fetch('/cgi-bin/refresh_data.py');
+                const updateResult = await updateResponse.json();
+
+                if (!updateResult.success) {
+                    alert('Error refreshing data: ' + updateResult.error);
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('dashboard').style.display = 'grid';
+                    return;
+                }
+
+                // Reload the dashboard data
+                await loadData();
+            } catch (error) {
+                alert('Failed to refresh data: ' + error.message);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'grid';
+            }
+        }
 
         async function loadData() {
             try {

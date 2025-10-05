@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFL Member Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            padding: 8px;
+        }
+
+        .container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            border-radius: 6px;
+            padding: 10px 16px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            color: #2d3748;
+            display: inline-block;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 10px;
+            display: inline-block;
+            margin-left: 12px;
+        }
+
+        .refresh-btn {
+            float: right;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .dashboard-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        .card {
+            background: white;
+            border-radius: 6px;
+            padding: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Stats Cards - Top Row */
+        .stat-card {
+            grid-row: 1;
+        }
+
+        .stat-card:nth-child(1) { grid-column: 1 / 3; }
+        .stat-card:nth-child(2) { grid-column: 3 / 5; }
+        .stat-card:nth-child(3) { grid-column: 5 / 7; }
+        .stat-card:nth-child(4) { grid-column: 7 / 9; }
+        .stat-card:nth-child(5) { grid-column: 9 / 11; }
+        .stat-card:nth-child(6) { grid-column: 11 / 13; }
+
+        .stat-card h3 {
+            color: #718096;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 3px;
+        }
+
+        .stat-card .subtitle {
+            color: #a0aec0;
+            font-size: 8px;
+        }
+
+        .stat-card.primary .value { color: #667eea; }
+        .stat-card.success .value { color: #48bb78; }
+        .stat-card.warning .value { color: #ed8936; }
+        .stat-card.danger .value { color: #f56565; }
+
+        /* Charts - Middle Row */
+        .chart-card {
+            grid-row: 2;
+        }
+
+        .chart-membership { grid-column: 1 / 4; }
+        .chart-revenue { grid-column: 4 / 7; }
+        .chart-trend { grid-column: 7 / 13; }
+
+        .chart-card h2 {
+            font-size: 11px;
+            color: #2d3748;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+        }
+
+        /* Tables - Bottom Row */
+        .table-card {
+            grid-row: 3;
+            overflow: hidden;
+        }
+
+        .table-active { grid-column: 1 / 5; }
+        .table-new { grid-column: 5 / 8; }
+        .table-quit { grid-column: 8 / 13; }
+
+        .table-card h2 {
+            font-size: 11px;
+            color: #2d3748;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .member-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+        }
+
+        .member-table th {
+            background: #f7fafc;
+            padding: 4px 6px;
+            text-align: left;
+            font-size: 8px;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+        }
+
+        .member-table td {
+            padding: 4px 6px;
+            border-bottom: 1px solid #f7fafc;
+            color: #2d3748;
+        }
+
+        .member-table tr:hover {
+            background: #f7fafc;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-size: 8px;
+            font-weight: 600;
+        }
+
+        .badge-basic { background: #e6fffa; color: #047857; }
+        .badge-pro { background: #fef3c7; color: #92400e; }
+        .badge-volunteer { background: #dbeafe; color: #1e40af; }
+        .badge-other { background: #f3f4f6; color: #374151; }
+
+        .cancelled { color: #f56565; }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 14px;
+        }
+
+        /* Membership Details */
+        .membership-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 9px;
+        }
+
+        .membership-item:last-child {
+            border-bottom: none;
+        }
+
+        .membership-item .name {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .membership-item .stats {
+            display: flex;
+            gap: 8px;
+        }
+
+        .membership-item .stat {
+            text-align: right;
+        }
+
+        .membership-item .stat-label {
+            font-size: 7px;
+            color: #718096;
+        }
+
+        .membership-item .stat-value {
+            font-size: 10px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 CFL Member Dashboard</h1>
+            <p id="last-updated">Loading...</p>
+            <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+        </div>
+
+        <div id="loading" class="loading">Loading dashboard data...</div>
+
+        <div id="dashboard" class="dashboard-grid" style="display: none;">
+            <!-- Top Row: Stats Cards -->
+            <div class="card stat-card primary">
+                <h3>Active Members</h3>
+                <div class="value" id="total-members">0</div>
+                <div class="subtitle">Last 60 days</div>
+            </div>
+
+            <div class="card stat-card success">
+                <h3>Monthly Revenue</h3>
+                <div class="value" id="monthly-revenue">$0</div>
+                <div class="subtitle">Last 30 days</div>
+            </div>
+
+            <div class="card stat-card success">
+                <h3>Projected Rev</h3>
+                <div class="value" id="projected-revenue">$0</div>
+                <div class="subtitle">Next 30 days</div>
+            </div>
+
+            <div class="card stat-card warning">
+                <h3>New Members</h3>
+                <div class="value" id="new-members">0</div>
+                <div class="subtitle">Last 30 days</div>
+            </div>
+
+            <div class="card stat-card danger">
+                <h3>Members Quit</h3>
+                <div class="value" id="quit-members">0</div>
+                <div class="subtitle">Last 30 days</div>
+            </div>
+
+            <div class="card stat-card">
+                <h3>Total Payments</h3>
+                <div class="value" id="total-payments">0</div>
+                <div class="subtitle">All time</div>
+            </div>
+
+            <!-- Middle Row: Charts -->
+            <div class="card chart-card chart-membership">
+                <h2>Membership Distribution</h2>
+                <div class="chart-container">
+                    <canvas id="membershipChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card chart-card chart-revenue">
+                <h2>Revenue by Type</h2>
+                <div class="chart-container">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card chart-card chart-trend">
+                <h2>Revenue Trend (6 Months)</h2>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Tables -->
+            <div class="card table-card table-active">
+                <h2>Active Members</h2>
+                <div class="table-container">
+                    <table class="member-table" id="active-table"></table>
+                </div>
+            </div>
+
+            <div class="card table-card table-new">
+                <h2>New Members</h2>
+                <div class="table-container">
+                    <table class="member-table" id="new-table"></table>
+                </div>
+            </div>
+
+            <div class="card table-card table-quit">
+                <h2>Recently Quit</h2>
+                <div class="table-container">
+                    <table class="member-table" id="quit-table"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let membershipChart, revenueChart, trendChart;
+
+        async function loadData() {
+            try {
+                const response = await fetch('dashboard_data.json');
+                const data = await response.json();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'grid';
+
+                // Update stats
+                const activeMembersText = data.total_active_members > data.ongoing_members
+                    ? `${data.ongoing_members} (${data.total_active_members})`
+                    : data.ongoing_members;
+                document.getElementById('total-members').textContent = activeMembersText;
+                document.getElementById('monthly-revenue').textContent = `$${data.monthly_revenue.toFixed(2)}`;
+                document.getElementById('projected-revenue').textContent = `$${data.projected_revenue.toFixed(2)}`;
+                document.getElementById('new-members').textContent = data.new_members_30_days;
+                document.getElementById('quit-members').textContent = data.members_quit_60_days;
+                document.getElementById('total-payments').textContent = data.total_payments;
+                document.getElementById('last-updated').textContent = `Last updated: ${data.last_updated}`;
+
+                // Create charts
+                createMembershipChart(data.membership_breakdown);
+                createRevenueChart(data.revenue_by_type);
+                createTrendChart(data.monthly_trend);
+
+                // Create tables
+                createActiveTable(data.active_member_list);
+                createNewTable(data.new_member_list);
+                createQuitTable(data.quit_member_list);
+
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <h2 style="color: white;">Error loading data</h2>
+                    <p style="color: white;">Please run: python analyze_members.py</p>
+                    <p style="color: #ff6b6b; margin-top: 10px;">${error.message}</p>
+                `;
+            }
+        }
+
+        function createMembershipChart(data) {
+            const ctx = document.getElementById('membershipChart').getContext('2d');
+            if (membershipChart) membershipChart.destroy();
+
+            membershipChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: ['#667eea', '#48bb78', '#ed8936', '#f56565'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { padding: 6, font: { size: 9 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createRevenueChart(data) {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            if (revenueChart) revenueChart.destroy();
+
+            revenueChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: Object.values(data),
+                        backgroundColor: '#667eea',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: { size: 8 },
+                                callback: v => '$' + v.toFixed(0)
+                            }
+                        },
+                        x: {
+                            ticks: { font: { size: 8 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createTrendChart(data) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            if (trendChart) trendChart.destroy();
+
+            trendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: Object.values(data),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: { size: 8 },
+                                callback: v => '$' + v.toFixed(0)
+                            }
+                        },
+                        x: {
+                            ticks: { font: { size: 8 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function getBadgeClass(type) {
+            const map = { 'Basic': 'badge-basic', 'Pro': 'badge-pro', 'Volunteer': 'badge-volunteer' };
+            return map[type] || 'badge-other';
+        }
+
+        function createActiveTable(members) {
+            const table = document.getElementById('active-table');
+            const activeMembers = members.filter(m => m.recurring_status !== 'Stopped');
+            const stoppedMembers = members.filter(m => m.recurring_status === 'Stopped');
+
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Days</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${activeMembers.map(m => `
+                        <tr>
+                            <td><strong>${m.name}</strong></td>
+                            <td><span class="badge ${getBadgeClass(m.membership_type)}">${m.membership_type}</span></td>
+                            <td>${m.days_as_member}</td>
+                            <td style="color: #48bb78; font-size: 8px;">Active</td>
+                        </tr>
+                    `).join('')}
+                    ${stoppedMembers.map(m => `
+                        <tr>
+                            <td class="cancelled"><strong>${m.name}</strong></td>
+                            <td><span class="badge ${getBadgeClass(m.membership_type)}">${m.membership_type}</span></td>
+                            <td>${m.days_as_member}</td>
+                            <td style="color: #f56565; font-size: 8px;">Cancelled</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+        }
+
+        function createNewTable(members) {
+            const table = document.getElementById('new-table');
+            if (members.length === 0) {
+                table.innerHTML = '<p style="color: #a0aec0; font-size: 9px; padding: 10px;">None</p>';
+                return;
+            }
+
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Days</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${members.map(m => `
+                        <tr>
+                            <td><strong>${m.name}</strong></td>
+                            <td><span class="badge ${getBadgeClass(m.membership_type)}">${m.membership_type}</span></td>
+                            <td>${m.days_as_member}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+        }
+
+        function createQuitTable(members) {
+            const table = document.getElementById('quit-table');
+            if (members.length === 0) {
+                table.innerHTML = '<p style="color: #a0aec0; font-size: 9px; padding: 10px;">None</p>';
+                return;
+            }
+
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Last Pay</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${members.map(m => `
+                        <tr>
+                            <td><strong>${m.name}</strong></td>
+                            <td><span class="badge ${getBadgeClass(m.membership_type)}">${m.membership_type}</span></td>
+                            <td>${m.last_payment}</td>
+                            <td style="font-size: 8px; color: ${m.quit_reason.includes('Cancelled') ? '#f56565' : '#ed8936'};">${m.quit_reason.split('(')[0]}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+        }
+
+        loadData();
+        setInterval(loadData, 300000);
+    </script>
+</body>
+</html>

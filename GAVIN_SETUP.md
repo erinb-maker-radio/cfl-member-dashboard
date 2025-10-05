@@ -60,7 +60,15 @@ ZEFFY_PASSWORD=your-zeffy-password
 
 Save: `Ctrl+X`, `Y`, `Enter`
 
-### 5. Configure Nginx
+### 5. Install CGI Support
+
+```bash
+sudo apt install -y fcgiwrap
+sudo systemctl enable fcgiwrap
+sudo systemctl start fcgiwrap
+```
+
+### 6. Configure Nginx
 
 ```bash
 sudo nano /etc/nginx/sites-available/cfl-dashboard
@@ -79,6 +87,14 @@ server {
     location / {
         try_files $uri $uri/ =404;
         add_header Cache-Control "no-cache, must-revalidate";
+    }
+
+    # CGI endpoint for refresh button
+    location /cgi-bin/ {
+        gzip off;
+        fastcgi_pass unix:/var/run/fcgiwrap.socket;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME /var/www/cfl-member-dashboard$fastcgi_script_name;
     }
 
     # Cache static assets
@@ -108,7 +124,14 @@ sudo nginx -t
 sudo systemctl restart nginx
 ```
 
-### 6. Set Up Auto-Updates
+### 7. Set Up CGI Script
+
+```bash
+mkdir -p /var/www/cfl-member-dashboard/cgi-bin
+chmod +x /var/www/cfl-member-dashboard/refresh_data.py
+```
+
+### 8. Set Up Auto-Updates
 
 Create update script:
 ```bash
@@ -141,7 +164,7 @@ Add this line:
 0 */6 * * * /var/www/cfl-member-dashboard/update_dashboard.sh
 ```
 
-### 7. Initial Data Load
+### 9. Initial Data Load
 
 ```bash
 cd /var/www/cfl-member-dashboard
@@ -151,7 +174,7 @@ python3 analyze_members.py
 
 If successful, you'll see a `dashboard_data.json` file created.
 
-### 8. Test Dashboard
+### 10. Test Dashboard
 
 Open in browser:
 - http://142.44.212.80/dashboard.html

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFL Member Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            padding: 10px;
+        }
+
+        .container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            color: #2d3748;
+            display: inline-block;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 11px;
+            display: inline-block;
+            margin-left: 15px;
+        }
+
+        .refresh-btn {
+            float: right;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .dashboard-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 2fr 3fr;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .stat-card h3 {
+            color: #718096;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 6px;
+        }
+
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .subtitle {
+            color: #a0aec0;
+            font-size: 9px;
+        }
+
+        .stat-card.primary .value { color: #667eea; }
+        .stat-card.success .value { color: #48bb78; }
+        .stat-card.warning .value { color: #ed8936; }
+        .stat-card.danger .value { color: #f56565; }
+
+        .member-lists {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .member-lists h2 {
+            font-size: 14px;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .list-container {
+            flex: 1;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+
+        .list-container ul {
+            margin: 0;
+            padding-left: 18px;
+            line-height: 1.6;
+            color: #718096;
+        }
+
+        .list-container li {
+            margin-bottom: 3px;
+        }
+
+        .cancelled {
+            color: #f56565;
+        }
+
+        .divider {
+            border-top: 1px solid #e2e8f0;
+            margin: 8px 0;
+        }
+
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .member-table-card {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .member-table-card h2 {
+            font-size: 14px;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .member-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+
+        .member-table th {
+            background: #f7fafc;
+            padding: 6px 8px;
+            text-align: left;
+            font-size: 9px;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+        }
+
+        .member-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #f7fafc;
+            color: #2d3748;
+        }
+
+        .member-table tr:hover {
+            background: #f7fafc;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: 600;
+        }
+
+        .badge-basic { background: #e6fffa; color: #047857; }
+        .badge-pro { background: #fef3c7; color: #92400e; }
+        .badge-volunteer { background: #dbeafe; color: #1e40af; }
+        .badge-other { background: #f3f4f6; color: #374151; }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 CFL Member Dashboard</h1>
+            <p id="last-updated">Loading...</p>
+            <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+        </div>
+
+        <div id="loading" class="loading">Loading dashboard data...</div>
+
+        <div id="dashboard" class="dashboard-content" style="display: none;">
+            <!-- Left Column -->
+            <div class="left-column">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card primary">
+                        <h3>Active Members</h3>
+                        <div class="value" id="total-members">0</div>
+                        <div class="subtitle">Active in last 60 days</div>
+                    </div>
+
+                    <div class="stat-card success">
+                        <h3>Monthly Revenue</h3>
+                        <div class="value" id="monthly-revenue">$0</div>
+                        <div class="subtitle">Last 30 days</div>
+                    </div>
+
+                    <div class="stat-card success">
+                        <h3>Projected Revenue</h3>
+                        <div class="value" id="projected-revenue">$0</div>
+                        <div class="subtitle">Next 30 days</div>
+                    </div>
+
+                    <div class="stat-card warning">
+                        <h3>New Members</h3>
+                        <div class="value" id="new-members">0</div>
+                        <div class="subtitle">Last 30 days</div>
+                    </div>
+
+                    <div class="stat-card danger">
+                        <h3>Members Quit</h3>
+                        <div class="value" id="quit-members">0</div>
+                        <div class="subtitle">Last 30 days</div>
+                    </div>
+                </div>
+
+                <!-- Member Lists Summary -->
+                <div class="member-lists">
+                    <h2>Quick View</h2>
+                    <div class="list-container">
+                        <strong style="font-size: 11px; color: #667eea;">Active Members:</strong>
+                        <div id="active-list-summary"></div>
+
+                        <div class="divider"></div>
+
+                        <strong style="font-size: 11px; color: #ed8936;">New Members:</strong>
+                        <div id="new-list-summary"></div>
+
+                        <div class="divider"></div>
+
+                        <strong style="font-size: 11px; color: #f56565;">Recently Quit:</strong>
+                        <div id="quit-list-summary"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="right-column">
+                <!-- All Members Table -->
+                <div class="member-table-card">
+                    <h2>All Active Members</h2>
+                    <div class="table-container">
+                        <table class="member-table" id="members-table"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadData() {
+            try {
+                const response = await fetch('dashboard_data.json');
+                const data = await response.json();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'grid';
+
+                // Update stats
+                const activeMembersText = data.total_active_members > data.ongoing_members
+                    ? `${data.ongoing_members} (${data.total_active_members})`
+                    : data.ongoing_members;
+                document.getElementById('total-members').textContent = activeMembersText;
+                document.getElementById('monthly-revenue').textContent = `$${data.monthly_revenue.toFixed(2)}`;
+                document.getElementById('projected-revenue').textContent = `$${data.projected_revenue.toFixed(2)}`;
+                document.getElementById('new-members').textContent = data.new_members_30_days;
+                document.getElementById('quit-members').textContent = data.members_quit_60_days;
+                document.getElementById('last-updated').textContent = `Last updated: ${data.last_updated}`;
+
+                // Update member lists
+                updateMemberListSummary('active-list-summary', data.active_member_list);
+                updateMemberListSummary('new-list-summary', data.new_member_list);
+                updateMemberListSummary('quit-list-summary', data.quit_member_list);
+
+                // Create members table
+                createMembersTable(data.active_member_list);
+
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <h2 style="color: white;">Error loading data</h2>
+                    <p style="color: white;">Please run: python analyze_members.py</p>
+                    <p style="color: #ff6b6b; margin-top: 10px;">${error.message}</p>
+                `;
+            }
+        }
+
+        function updateMemberListSummary(elementId, members) {
+            const container = document.getElementById(elementId);
+            if (!members || members.length === 0) {
+                container.innerHTML = '<p style="color: #a0aec0; font-size: 10px; margin: 5px 0;">None</p>';
+                return;
+            }
+
+            if (elementId === 'active-list-summary') {
+                const activeMembers = members.filter(m => m.recurring_status !== 'Stopped');
+                const stoppedMembers = members.filter(m => m.recurring_status === 'Stopped');
+
+                let html = '<ul style="font-size: 10px; margin: 5px 0;">';
+                activeMembers.forEach(m => {
+                    html += `<li>${m.name}</li>`;
+                });
+                if (stoppedMembers.length > 0) {
+                    stoppedMembers.forEach(m => {
+                        html += `<li class="cancelled">${m.name} (Cancelled)</li>`;
+                    });
+                }
+                html += '</ul>';
+                container.innerHTML = html;
+            } else {
+                const names = members.map(m => `<li>${m.name}</li>`).join('');
+                container.innerHTML = `<ul style="font-size: 10px; margin: 5px 0;">${names}</ul>`;
+            }
+        }
+
+        function createMembersTable(members) {
+            const table = document.getElementById('members-table');
+
+            const getBadgeClass = (type) => {
+                const map = { 'Basic': 'badge-basic', 'Pro': 'badge-pro', 'Volunteer': 'badge-volunteer' };
+                return map[type] || 'badge-other';
+            };
+
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Type</th>
+                        <th>Days</th>
+                        <th>First</th>
+                        <th>Last</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${members.map(member => `
+                        <tr>
+                            <td><strong>${member.name}</strong></td>
+                            <td>${member.email}</td>
+                            <td><span class="badge ${getBadgeClass(member.membership_type)}">${member.membership_type}</span></td>
+                            <td>${member.days_as_member}</td>
+                            <td>${member.first_payment}</td>
+                            <td>${member.last_payment}</td>
+                            <td style="color: ${member.recurring_status === 'Stopped' ? '#f56565' : '#48bb78'}; font-size: 9px;">${member.recurring_status || 'Active'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+        }
+
+        // Load data on page load
+        loadData();
+
+        // Auto-refresh every 5 minutes
+        setInterval(loadData, 300000);
+    </script>
+</body>
+</html>
