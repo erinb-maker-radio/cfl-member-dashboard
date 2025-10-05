@@ -191,10 +191,10 @@ def analyze_payments(file_path):
     # Sort by days as member (descending)
     active_member_list.sort(key=lambda x: x['days_as_member'], reverse=True)
 
-    # Build new member list (joined in last 30 days)
+    # Build new member list (joined in last 30 days, not stopped)
     new_member_list = []
     for member in active_member_list:
-        if member['days_as_member'] <= 30:
+        if member['days_as_member'] <= 30 and member.get('recurring_status') != 'Stopped':
             new_member_list.append(member)
 
     # Build quit member list (only those who quit in last 30 days)
