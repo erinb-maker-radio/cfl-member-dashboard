@@ -73,6 +73,25 @@ async def download_zeffy_payments():
             await page.goto(ZEFFY_LOGIN_URL, wait_until='networkidle')
             await page.wait_for_timeout(2000)  # Wait for page to settle
 
+            # Dismiss cookie consent popup if it appears
+            print("Checking for cookie popup...")
+            try:
+                cookie_accept_selectors = [
+                    'button:has-text("Accept all cookies")',
+                    'button:has-text("Accept")',
+                    'button[id*="cookie"]',
+                ]
+                for selector in cookie_accept_selectors:
+                    try:
+                        await page.click(selector, timeout=2000)
+                        print("✓ Dismissed cookie popup")
+                        await page.wait_for_timeout(1000)
+                        break
+                    except:
+                        continue
+            except:
+                print("No cookie popup found, continuing...")
+
             # Step 2: Enter credentials and login
             print("Logging in...")
 
