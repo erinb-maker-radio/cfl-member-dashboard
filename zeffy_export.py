@@ -85,31 +85,34 @@ async def download_zeffy_payments():
                 await page.goto(ZEFFY_PAYMENTS_URL, wait_until='domcontentloaded', timeout=60000)
                 await page.wait_for_timeout(3000)
 
-                # Select "2024" from date dropdown to get all historical data
-                print("Selecting 2024 date filter to get all historical data...")
+                # Scroll down multiple times to load ALL payments via infinite scroll/pagination
+                print("Scrolling to load all payment records...")
                 try:
-                    # Click the date range dropdown
-                    await page.click('input[placeholder*="Add a date range"]', timeout=3000)
+                    last_height = await page.evaluate("document.body.scrollHeight")
+                    scroll_attempts = 0
+                    max_scrolls = 20  # Prevent infinite loop
+
+                    while scroll_attempts < max_scrolls:
+                        # Scroll to bottom
+                        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                        await page.wait_for_timeout(1500)  # Wait for new content to load
+
+                        # Check if new content loaded
+                        new_height = await page.evaluate("document.body.scrollHeight")
+                        if new_height == last_height:
+                            print(f"✓ Reached end of payments after {scroll_attempts + 1} scrolls")
+                            break
+
+                        last_height = new_height
+                        scroll_attempts += 1
+                        print(f"  Scrolled {scroll_attempts} times, loading more data...")
+
+                    # Scroll back to top for export button
+                    await page.evaluate("window.scrollTo(0, 0)")
                     await page.wait_for_timeout(1000)
 
-                    # Click "2024" option from the dropdown
-                    await page.click('button:has-text("2024")', timeout=3000)
-                    print("✓ Selected 2024 date filter")
-                    await page.wait_for_timeout(3000)  # Wait for page to reload with 2024 data
-
-                    # Take screenshot to verify
-                    await page.screenshot(path='/var/www/cfl-member-dashboard/exports/after_2024_filter.png')
-                    print("📸 Screenshot saved: after_2024_filter.png")
-
                 except Exception as e:
-                    print(f"⚠ Could not set 2024 filter: {e}")
-                    print("Attempting to clear filter instead...")
-                    try:
-                        await page.click('button:has-text("Clear")', timeout=2000)
-                        await page.wait_for_timeout(2000)
-                        print("✓ Cleared filter")
-                    except:
-                        print("⚠ Could not modify date filter, exporting visible data only")
+                    print(f"⚠ Scroll failed: {e}")
             else:
                 # Step 1: Navigate to login page
                 print("Navigating to login page...")
