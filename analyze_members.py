@@ -98,9 +98,10 @@ def analyze_payments(file_path):
     # Count by membership type
     membership_counts = recent_payments.groupby('Membership Type')[contact_col].nunique().to_dict()
 
-    # Calculate monthly revenue (last 30 days) - only memberships
-    last_month = df_memberships[df_memberships[date_col] >= thirty_days_ago]
-    monthly_revenue = last_month[amount_col].sum() if amount_col in last_month.columns else 0
+    # Calculate monthly revenue (current calendar month) - only memberships
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    current_month_payments = df_memberships[df_memberships[date_col] >= current_month_start]
+    monthly_revenue = current_month_payments[amount_col].sum() if amount_col in current_month_payments.columns else 0
 
     # Calculate revenue by membership type
     revenue_by_type = recent_payments.groupby('Membership Type')[amount_col].sum().to_dict() if amount_col in recent_payments.columns else {}
@@ -244,12 +245,17 @@ def analyze_payments(file_path):
     ongoing_count = len(ongoing_members)
     total_active_count = len(active_member_list_unique)  # Includes cancelled but still active
 
-    # Calculate projected revenue for next 30 days
-    # Based on ongoing members only (exclude stopped)
-    projected_revenue = monthly_revenue  # Simple projection: assume same as last 30 days
-    if ongoing_count > 0 and total_active_count > 0:
-        # Project based on ratio of ongoing members
-        projected_revenue = monthly_revenue * (ongoing_count / total_active_count)
+    # Calculate projected revenue for next calendar month
+    # Based on ongoing members' average monthly payment
+    if ongoing_count > 0:
+        # Calculate average monthly payment from ongoing members
+        ongoing_emails = [m['email'] for m in ongoing_members]
+        ongoing_payments = recent_payments[recent_payments[contact_col].isin(ongoing_emails)]
+        avg_per_member = ongoing_payments[amount_col].sum() / ongoing_count if len(ongoing_payments) > 0 else 0
+        # Project next month based on ongoing members only
+        projected_revenue = avg_per_member * ongoing_count
+    else:
+        projected_revenue = 0
 
     # Prepare dashboard data
     dashboard_data = {
