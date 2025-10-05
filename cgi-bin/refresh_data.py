@@ -15,8 +15,9 @@ print("Access-Control-Allow-Origin: *")
 print()
 
 try:
-    # Run zeffy export
-    result1 = subprocess.run(['python3', 'zeffy_export.py'],
+    # Run zeffy export with venv python
+    venv_python = '/var/www/cfl-member-dashboard/venv/bin/python3'
+    result1 = subprocess.run([venv_python, 'zeffy_export.py'],
                             capture_output=True,
                             text=True,
                             timeout=120)
@@ -30,7 +31,7 @@ try:
         sys.exit(1)
 
     # Run analysis
-    result2 = subprocess.run(['python3', 'analyze_members.py'],
+    result2 = subprocess.run([venv_python, 'analyze_members.py'],
                             capture_output=True,
                             text=True,
                             timeout=60)
