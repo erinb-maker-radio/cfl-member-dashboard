@@ -356,8 +356,14 @@ def main():
         latest_file = get_latest_export_file()
         print(f"Processing: {latest_file}")
 
+        # Get file modification time as the "last updated" timestamp
+        file_mtime = datetime.fromtimestamp(latest_file.stat().st_mtime)
+
         # Analyze data
         data = analyze_payments(latest_file)
+
+        # Override last_updated with CSV export time
+        data['last_updated'] = file_mtime.strftime('%Y-%m-%d %H:%M:%S')
 
         # Save to JSON
         output_path = Path(OUTPUT_FILE)
