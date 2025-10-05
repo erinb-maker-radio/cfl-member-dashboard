@@ -34,12 +34,10 @@ ZEFFY_PAYMENTS_URL = os.getenv('ZEFFY_PAYMENTS_URL', 'https://www.zeffy.com/en-U
 # Auto-detect environment
 if os.name == 'nt':  # Windows
     DOWNLOAD_FOLDER = os.getenv('DOWNLOAD_FOLDER', r'C:\Users\erin\Zeffy_Exports')
+    COOKIE_FILE = r'C:\Users\erin\CFL Member Dashboard\zeffy_cookies.json'
 else:  # Linux/Server
     DOWNLOAD_FOLDER = os.getenv('DOWNLOAD_FOLDER', '/var/www/cfl-member-dashboard/exports')
-
-# Validate required environment variables
-if not ZEFFY_EMAIL or not ZEFFY_PASSWORD:
-    raise ValueError("ZEFFY_EMAIL and ZEFFY_PASSWORD must be set in .env file")
+    COOKIE_FILE = '/var/www/cfl-member-dashboard/zeffy_cookies.json'
 
 async def download_zeffy_payments():
     """Main function to automate Zeffy payment export"""
@@ -58,84 +56,102 @@ async def download_zeffy_payments():
             downloads_path=str(download_path)
         )
 
+        # Load saved cookies if they exist
+        cookie_path = Path(COOKIE_FILE)
+        storage_state = None
+        if cookie_path.exists():
+            print(f"✓ Loading saved cookies from {cookie_path}")
+            with open(cookie_path, 'r') as f:
+                cookies = json.load(f)
+                storage_state = {'cookies': cookies, 'origins': []}
+        else:
+            print(f"⚠ No saved cookies found. Run save_zeffy_cookies.py first!")
+
         # Create browser context with download path and realistic user agent
         context = await browser.new_context(
             accept_downloads=True,
             viewport={'width': 1920, 'height': 1080},
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            storage_state=storage_state
         )
 
         page = await context.new_page()
 
         try:
-            # Step 1: Navigate to login page
-            print("Navigating to login page...")
-            await page.goto(ZEFFY_LOGIN_URL, wait_until='networkidle')
-            await page.wait_for_timeout(2000)  # Wait for page to settle
+            # If we have cookies, skip login and go straight to payments page
+            if storage_state:
+                print("Using saved session, skipping login...")
+                await page.goto(ZEFFY_PAYMENTS_URL, wait_until='domcontentloaded', timeout=60000)
+                await page.wait_for_timeout(3000)
+            else:
+                # Step 1: Navigate to login page
+                print("Navigating to login page...")
+                await page.goto(ZEFFY_LOGIN_URL, wait_until='networkidle')
+                await page.wait_for_timeout(2000)  # Wait for page to settle
 
-            # Dismiss cookie consent popup if it appears
-            print("Checking for cookie popup...")
-            try:
-                cookie_accept_selectors = [
-                    'button:has-text("Accept all cookies")',
-                    'button:has-text("Accept")',
-                    'button[id*="cookie"]',
-                ]
-                for selector in cookie_accept_selectors:
-                    try:
-                        await page.click(selector, timeout=2000)
-                        print("✓ Dismissed cookie popup")
-                        await page.wait_for_timeout(1000)
-                        break
-                    except:
-                        continue
-            except:
-                print("No cookie popup found, continuing...")
+                # Dismiss cookie consent popup if it appears
+                print("Checking for cookie popup...")
+                try:
+                    cookie_accept_selectors = [
+                        'button:has-text("Accept all cookies")',
+                        'button:has-text("Accept")',
+                        'button[id*="cookie"]',
+                    ]
+                    for selector in cookie_accept_selectors:
+                        try:
+                            await page.click(selector, timeout=2000)
+                            print("✓ Dismissed cookie popup")
+                            await page.wait_for_timeout(1000)
+                            break
+                        except:
+                            continue
+                except:
+                    print("No cookie popup found, continuing...")
 
-            # Step 2: Enter credentials and login
-            print("Logging in...")
+                # Step 2: Enter credentials and login
+                print("Logging in...")
 
-            # Find and fill email field (adjust selector if needed)
-            email_selector = 'input[type="email"], input[name="email"], input[id*="email"]'
-            await page.wait_for_selector(email_selector, timeout=10000)
-            await page.fill(email_selector, ZEFFY_EMAIL)
+                # Find and fill email field (adjust selector if needed)
+                email_selector = 'input[type="email"], input[name="email"], input[id*="email"]'
+                await page.wait_for_selector(email_selector, timeout=10000)
+                await page.fill(email_selector, ZEFFY_EMAIL)
 
-            # Click Next button after email (not the Google login button)
-            print("Clicking Next button...")
-            next_button = 'button:has-text("Next")'
-            await page.click(next_button)
-            await page.wait_for_timeout(3000)
+                # Click Next button after email (not the Google login button)
+                print("Clicking Next button...")
+                next_button = 'button:has-text("Next")'
+                await page.click(next_button)
+                await page.wait_for_timeout(3000)
 
-            # Debug screenshot after clicking Next
-            await page.screenshot(path='/var/www/cfl-member-dashboard/exports/after_next.png')
+                # Debug screenshot after clicking Next
+                await page.screenshot(path='/var/www/cfl-member-dashboard/exports/after_next.png')
 
-            # Find and fill password field on next screen
-            print("Entering password...")
-            password_selector = 'input[type="password"], input[name="password"], input[id*="password"]'
+                # Find and fill password field on next screen
+                print("Entering password...")
+                password_selector = 'input[type="password"], input[name="password"], input[id*="password"]'
 
-            # Try to wait for password field with better error handling
-            try:
-                await page.wait_for_selector(password_selector, timeout=10000)
-                await page.fill(password_selector, ZEFFY_PASSWORD)
-            except:
-                # Take screenshot if password field not found
-                await page.screenshot(path='/var/www/cfl-member-dashboard/exports/password_not_found.png')
-                raise Exception("Password field not found. Check after_next.png and password_not_found.png")
+                # Try to wait for password field with better error handling
+                try:
+                    await page.wait_for_selector(password_selector, timeout=10000)
+                    await page.fill(password_selector, ZEFFY_PASSWORD)
+                except:
+                    # Take screenshot if password field not found
+                    await page.screenshot(path='/var/www/cfl-member-dashboard/exports/password_not_found.png')
+                    raise Exception("Password field not found. Check after_next.png and password_not_found.png")
 
-            # Click Confirm button to login
-            print("Clicking Confirm button...")
-            confirm_button = 'button:has-text("Confirm")'
-            await page.click(confirm_button)
+                # Click Confirm button to login
+                print("Clicking Confirm button...")
+                confirm_button = 'button:has-text("Confirm")'
+                await page.click(confirm_button)
 
-            # Wait for navigation after login
-            print("Waiting for login to complete...")
-            await page.wait_for_load_state('domcontentloaded', timeout=30000)
-            await page.wait_for_timeout(5000)  # Additional wait for dashboard to load
+                # Wait for navigation after login
+                print("Waiting for login to complete...")
+                await page.wait_for_load_state('domcontentloaded', timeout=30000)
+                await page.wait_for_timeout(5000)  # Additional wait for dashboard to load
 
-            # Step 3: Navigate to payments page
-            print(f"Navigating to payments page...")
-            await page.goto(ZEFFY_PAYMENTS_URL, wait_until='domcontentloaded', timeout=60000)
-            await page.wait_for_timeout(5000)  # Wait for page to fully render
+                # Step 3: Navigate to payments page
+                print(f"Navigating to payments page...")
+                await page.goto(ZEFFY_PAYMENTS_URL, wait_until='domcontentloaded', timeout=60000)
+                await page.wait_for_timeout(5000)  # Wait for page to fully render
 
             # Step 4: Click Export button - try multiple selectors
             print("Clicking Export button...")
