@@ -85,30 +85,52 @@ async def download_zeffy_payments():
                 await page.goto(ZEFFY_PAYMENTS_URL, wait_until='domcontentloaded', timeout=60000)
                 await page.wait_for_timeout(3000)
 
-                # Remove date filter to show all historical data
-                print("Removing date filter to show all data...")
+                # Set custom date range to get all historical data (from 2024)
+                print("Setting custom date range to get all historical data...")
                 try:
-                    # Click the "Clear" button to remove date filters
-                    await page.click('button:has-text("Clear")', timeout=3000)
-                    print("✓ Cleared date filter")
-                    await page.wait_for_timeout(3000)  # Wait for page to reload with all data
+                    # Click the date range input/button
+                    date_input_selectors = [
+                        'input[placeholder*="Add a date range"]',
+                        'button:has-text("Add a date range")',
+                        '[data-testid*="date-range"]',
+                    ]
 
-                    # Take screenshot to verify date range
-                    await page.screenshot(path='/var/www/cfl-member-dashboard/exports/after_clear_filter.png')
-                    print("📸 Screenshot saved: after_clear_filter.png")
+                    for selector in date_input_selectors:
+                        try:
+                            await page.click(selector, timeout=2000)
+                            print(f"✓ Clicked date range selector: {selector}")
+                            await page.wait_for_timeout(1000)
+
+                            # Click "Custom date range" option if dropdown appeared
+                            try:
+                                await page.click('button:has-text("Custom date range")', timeout=2000)
+                                await page.wait_for_timeout(500)
+                            except:
+                                pass
+
+                            # Type start date (Jan 1, 2024)
+                            await page.fill('input[placeholder*="start"], input[aria-label*="start"]', '01/01/2024', timeout=2000)
+                            await page.wait_for_timeout(500)
+
+                            # Type or select end date (today)
+                            await page.fill('input[placeholder*="end"], input[aria-label*="end"]', '12/31/2025', timeout=2000)
+                            await page.wait_for_timeout(500)
+
+                            # Press Enter or click Apply
+                            await page.keyboard.press('Enter')
+                            await page.wait_for_timeout(3000)
+
+                            print("✓ Set custom date range: 01/01/2024 - 12/31/2025")
+
+                            # Take screenshot to verify
+                            await page.screenshot(path='/var/www/cfl-member-dashboard/exports/after_date_range.png')
+                            print("📸 Screenshot saved: after_date_range.png")
+                            break
+                        except Exception as e:
+                            continue
+
                 except Exception as e:
-                    print(f"⚠ Could not clear date filter: {e}")
-                    print("Trying alternative method...")
-                    try:
-                        # Alternative: click the date dropdown and select a wide range
-                        await page.click('button:has-text("Add a date range"), input[placeholder*="date"]', timeout=2000)
-                        await page.wait_for_timeout(500)
-                        # Try to select "2024" or earlier year
-                        await page.click('button:has-text("2024")', timeout=2000)
-                        print("✓ Selected 2024 data")
-                        await page.wait_for_timeout(2000)
-                    except:
-                        print("⚠ Could not modify date filter, exporting visible data only")
+                    print(f"⚠ Could not set custom date range: {e}")
             else:
                 # Step 1: Navigate to login page
                 print("Navigating to login page...")
