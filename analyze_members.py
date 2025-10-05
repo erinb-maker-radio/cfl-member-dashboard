@@ -12,10 +12,16 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 import glob
+import os
+import sys
 
-# Configuration
-EXPORT_FOLDER = r'C:\Users\erin\Zeffy_Exports'
-OUTPUT_FILE = r'C:\Users\erin\CFL Member Dashboard\dashboard_data.json'
+# Configuration - auto-detect environment
+if os.name == 'nt':  # Windows
+    EXPORT_FOLDER = r'C:\Users\erin\Zeffy_Exports'
+    OUTPUT_FILE = r'C:\Users\erin\CFL Member Dashboard\dashboard_data.json'
+else:  # Linux/Server
+    EXPORT_FOLDER = '/var/www/cfl-member-dashboard/exports'
+    OUTPUT_FILE = '/var/www/cfl-member-dashboard/exports/dashboard_data.json'
 
 def get_latest_export_file():
     """Find the most recent Zeffy export file"""
