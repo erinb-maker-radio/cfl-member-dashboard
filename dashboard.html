@@ -608,14 +608,14 @@
             <div class="card stat-card success">
                 <h3>Monthly Revenue</h3>
                 <div class="value" id="monthly-revenue">$0</div>
-                <div class="subtitle">Last complete month</div>
+                <div class="subtitle" id="monthly-revenue-month">Last complete month</div>
                 <div class="member-list" id="revenue-details"></div>
             </div>
 
             <div class="card stat-card success-light">
                 <h3>Projected Rev</h3>
                 <div class="value" id="projected-revenue">$0</div>
-                <div class="subtitle">Current month</div>
+                <div class="subtitle" id="projected-revenue-month">Current month</div>
                 <div class="member-list" id="projection-details"></div>
             </div>
         </div>
@@ -639,6 +639,8 @@
 
                 document.getElementById('monthly-revenue').textContent = `$${data.monthly_revenue.toFixed(2)}`;
                 document.getElementById('projected-revenue').textContent = `$${data.projected_revenue.toFixed(2)}`;
+                document.getElementById('monthly-revenue-month').textContent = data.monthly_revenue_month || 'Last complete month';
+                document.getElementById('projected-revenue-month').textContent = data.projected_revenue_month || 'Current month';
                 document.getElementById('last-updated').textContent = `Last updated: ${data.last_updated}`;
 
                 // Update counts

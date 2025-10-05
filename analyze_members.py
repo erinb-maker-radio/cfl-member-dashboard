@@ -275,6 +275,10 @@ def analyze_payments(file_path):
     else:
         projected_revenue = 0
 
+    # Get month names for labels
+    last_month_name = last_month_start.strftime('%B')  # e.g., "September"
+    current_month_name = current_month_start.strftime('%B')  # e.g., "October"
+
     # Prepare dashboard data
     dashboard_data = {
         'last_updated': now.strftime('%Y-%m-%d %H:%M:%S'),
@@ -282,7 +286,9 @@ def analyze_payments(file_path):
         'total_active_members': total_active_count,  # Total including cancelled but still active
         'membership_breakdown': {k: int(v) for k, v in membership_counts.items()},
         'monthly_revenue': float(monthly_revenue),
+        'monthly_revenue_month': last_month_name,  # Month name for revenue
         'projected_revenue': float(projected_revenue),
+        'projected_revenue_month': current_month_name,  # Month name for projection
         'revenue_by_type': {k: float(v) for k, v in revenue_by_type.items()},
         'members_quit_60_days': len(quit_member_list_unique),  # Count unique names
         'avg_payment_by_type': {k: float(v) for k, v in avg_payment_by_type.items()},
