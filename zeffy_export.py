@@ -85,31 +85,26 @@ async def download_zeffy_payments():
                 await page.goto(ZEFFY_PAYMENTS_URL, wait_until='domcontentloaded', timeout=60000)
                 await page.wait_for_timeout(3000)
 
-                # Set page filter to show all time before exporting
-                print("Setting page filter to All time...")
+                # Remove date filter to show all historical data
+                print("Removing date filter to show all data...")
                 try:
-                    # Look for date/filter dropdown on the payments page
-                    filter_selectors = [
-                        'button:has-text("This year")',
-                        'button:has-text("Last 30 days")',
-                        'button:has-text("Custom")',
-                        '[data-testid*="filter"]',
-                        'button[aria-label*="filter"]',
-                    ]
-
-                    for selector in filter_selectors:
-                        try:
-                            await page.click(selector, timeout=2000)
-                            await page.wait_for_timeout(500)
-                            # Try to select "All time" from dropdown
-                            await page.click('button:has-text("All time"), li:has-text("All time"), [role="option"]:has-text("All time")', timeout=2000)
-                            print("✓ Set page filter to All time")
-                            await page.wait_for_timeout(2000)  # Wait for page to reload with all data
-                            break
-                        except:
-                            continue
-                except:
-                    print("⚠ Could not set All time filter, exporting visible data only")
+                    # Click the "Clear" button to remove date filters
+                    await page.click('button:has-text("Clear")', timeout=3000)
+                    print("✓ Cleared date filter")
+                    await page.wait_for_timeout(3000)  # Wait for page to reload with all data
+                except Exception as e:
+                    print(f"⚠ Could not clear date filter: {e}")
+                    print("Trying alternative method...")
+                    try:
+                        # Alternative: click the date dropdown and select a wide range
+                        await page.click('button:has-text("Add a date range"), input[placeholder*="date"]', timeout=2000)
+                        await page.wait_for_timeout(500)
+                        # Try to select "2024" or earlier year
+                        await page.click('button:has-text("2024")', timeout=2000)
+                        print("✓ Selected 2024 data")
+                        await page.wait_for_timeout(2000)
+                    except:
+                        print("⚠ Could not modify date filter, exporting visible data only")
             else:
                 # Step 1: Navigate to login page
                 print("Navigating to login page...")
