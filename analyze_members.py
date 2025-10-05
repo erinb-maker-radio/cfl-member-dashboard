@@ -306,7 +306,7 @@ def analyze_payments(file_path):
     # Based on ongoing members' average monthly payment from last complete month
     if ongoing_count > 0:
         # Calculate average monthly payment from ongoing members (using last month's data)
-        ongoing_emails = [m['email'] for m in ongoing_members]
+        ongoing_emails = [m['email'] for m in active_paid_members]
         ongoing_last_month = last_month_payments[last_month_payments[contact_col].isin(ongoing_emails)]
 
         # If we have last month data, use it; otherwise use recent 60-day average
