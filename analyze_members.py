@@ -98,10 +98,21 @@ def analyze_payments(file_path):
     # Count by membership type
     membership_counts = recent_payments.groupby('Membership Type')[contact_col].nunique().to_dict()
 
-    # Calculate monthly revenue (current calendar month) - only memberships
+    # Calculate monthly revenue (last complete calendar month) - only memberships
+    # Get first day of current month
     current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    current_month_payments = df_memberships[df_memberships[date_col] >= current_month_start]
-    monthly_revenue = current_month_payments[amount_col].sum() if amount_col in current_month_payments.columns else 0
+    # Get first day of last month
+    if now.month == 1:
+        last_month_start = current_month_start.replace(year=now.year - 1, month=12)
+    else:
+        last_month_start = current_month_start.replace(month=now.month - 1)
+
+    # Get payments from last complete month only
+    last_month_payments = df_memberships[
+        (df_memberships[date_col] >= last_month_start) &
+        (df_memberships[date_col] < current_month_start)
+    ]
+    monthly_revenue = last_month_payments[amount_col].sum() if amount_col in last_month_payments.columns else 0
 
     # Calculate revenue by membership type
     revenue_by_type = recent_payments.groupby('Membership Type')[amount_col].sum().to_dict() if amount_col in recent_payments.columns else {}
@@ -245,14 +256,21 @@ def analyze_payments(file_path):
     ongoing_count = len(ongoing_members)
     total_active_count = len(active_member_list_unique)  # Includes cancelled but still active
 
-    # Calculate projected revenue for next calendar month
-    # Based on ongoing members' average monthly payment
+    # Calculate projected revenue for current month in progress
+    # Based on ongoing members' average monthly payment from last complete month
     if ongoing_count > 0:
-        # Calculate average monthly payment from ongoing members
+        # Calculate average monthly payment from ongoing members (using last month's data)
         ongoing_emails = [m['email'] for m in ongoing_members]
-        ongoing_payments = recent_payments[recent_payments[contact_col].isin(ongoing_emails)]
-        avg_per_member = ongoing_payments[amount_col].sum() / ongoing_count if len(ongoing_payments) > 0 else 0
-        # Project next month based on ongoing members only
+        ongoing_last_month = last_month_payments[last_month_payments[contact_col].isin(ongoing_emails)]
+
+        # If we have last month data, use it; otherwise use recent 60-day average
+        if len(ongoing_last_month) > 0:
+            avg_per_member = ongoing_last_month[amount_col].sum() / len(ongoing_last_month[contact_col].unique())
+        else:
+            ongoing_payments = recent_payments[recent_payments[contact_col].isin(ongoing_emails)]
+            avg_per_member = ongoing_payments[amount_col].sum() / ongoing_count if len(ongoing_payments) > 0 else 0
+
+        # Project current month based on ongoing members only
         projected_revenue = avg_per_member * ongoing_count
     else:
         projected_revenue = 0
