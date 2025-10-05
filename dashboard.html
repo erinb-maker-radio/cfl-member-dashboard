@@ -626,7 +626,7 @@
 
         async function loadData() {
             try {
-                const response = await fetch('dashboard_data.json');
+                const response = await fetch('exports/dashboard_data.json');
                 const data = await response.json();
 
                 document.getElementById('loading').style.display = 'none';
