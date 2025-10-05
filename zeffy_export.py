@@ -84,6 +84,32 @@ async def download_zeffy_payments():
                 print("Using saved session, skipping login...")
                 await page.goto(ZEFFY_PAYMENTS_URL, wait_until='domcontentloaded', timeout=60000)
                 await page.wait_for_timeout(3000)
+
+                # Set page filter to show all time before exporting
+                print("Setting page filter to All time...")
+                try:
+                    # Look for date/filter dropdown on the payments page
+                    filter_selectors = [
+                        'button:has-text("This year")',
+                        'button:has-text("Last 30 days")',
+                        'button:has-text("Custom")',
+                        '[data-testid*="filter"]',
+                        'button[aria-label*="filter"]',
+                    ]
+
+                    for selector in filter_selectors:
+                        try:
+                            await page.click(selector, timeout=2000)
+                            await page.wait_for_timeout(500)
+                            # Try to select "All time" from dropdown
+                            await page.click('button:has-text("All time"), li:has-text("All time"), [role="option"]:has-text("All time")', timeout=2000)
+                            print("✓ Set page filter to All time")
+                            await page.wait_for_timeout(2000)  # Wait for page to reload with all data
+                            break
+                        except:
+                            continue
+                except:
+                    print("⚠ Could not set All time filter, exporting visible data only")
             else:
                 # Step 1: Navigate to login page
                 print("Navigating to login page...")
@@ -219,8 +245,17 @@ async def download_zeffy_payments():
             print("Clicking Select all...")
             select_all_selector = 'label:has-text("Select all")'
             await page.wait_for_selector(select_all_selector, timeout=5000)
+
+            # Take screenshot before clicking Select all
+            await page.screenshot(path='/var/www/cfl-member-dashboard/exports/before_select_all.png')
+            print("📸 Screenshot saved: before_select_all.png")
+
             await page.click(select_all_selector)
             await page.wait_for_timeout(1000)
+
+            # Take screenshot after clicking Select all
+            await page.screenshot(path='/var/www/cfl-member-dashboard/exports/after_select_all.png')
+            print("📸 Screenshot saved: after_select_all.png")
 
             # Step 7: Click the Export button in the modal (inside the dialog)
             print("Starting export...")
