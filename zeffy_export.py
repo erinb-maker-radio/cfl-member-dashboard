@@ -192,7 +192,29 @@ async def download_zeffy_payments():
 
             await page.wait_for_timeout(500)
 
-            # Step 6: Click "Select all" checkbox
+            # Step 6: Select date range - try to select "All time" or maximum range
+            print("Setting date range to All time...")
+            date_range_selectors = [
+                'button:has-text("All time")',
+                'select[name*="date"]',
+                '[data-testid*="date-range"]',
+            ]
+
+            for selector in date_range_selectors:
+                try:
+                    await page.click(selector, timeout=2000)
+                    await page.wait_for_timeout(500)
+                    # Try to click "All time" option if dropdown appeared
+                    try:
+                        await page.click('button:has-text("All time"), li:has-text("All time")', timeout=2000)
+                    except:
+                        pass
+                    print("✓ Set date range")
+                    break
+                except:
+                    continue
+
+            # Step 7: Click "Select all" checkbox
             print("Clicking Select all...")
             select_all_selector = 'label:has-text("Select all")'
             await page.wait_for_selector(select_all_selector, timeout=5000)
