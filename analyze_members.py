@@ -84,7 +84,7 @@ def analyze_payments(file_path):
 
     # Get current date and 30 days ago
     now = datetime.now()
-    thirty_days_ago = now - timedelta(days=30)
+    thirty_days_ago = now - timedelta(days=31)  # 31 days to include members whose payment is due today
     sixty_days_ago = now - timedelta(days=60)  # Still used for quit members
 
     # Filter for successful payments only
@@ -137,7 +137,7 @@ def analyze_payments(file_path):
     revenue_by_type = recent_payments.groupby('Membership Type')[amount_col].sum().to_dict() if amount_col in recent_payments.columns else {}
 
     # Find members who quit
-    # Method 1: Has "Stopped" recurring status (cancelled but may still have access)
+    # Method 1: Has "Stopped" recurring status (officially cancelled)
     recurring_col = 'Recurring Status' if 'Recurring Status' in df_memberships.columns else None
     stopped_members = set()
     if recurring_col:
@@ -145,14 +145,33 @@ def analyze_payments(file_path):
         stopped_members = set(stopped_df[contact_col].unique())
         print(f"Found {len(stopped_members)} members with 'Stopped' recurring status")
 
-    # Method 2: Had membership payments before 60 days ago but not after (truly inactive)
-    old_members = df_memberships[df_memberships[date_col] < sixty_days_ago][contact_col].unique()
-    current_members = recent_payments[contact_col].unique()
-    inactive_members = set(old_members) - set(current_members)
+    # Method 2: Members who are "Past due" for 15+ days are considered quit
+    # Check if they have "Past due" status AND haven't paid in 15+ days
+    late_quit_members = set()
+    past_due_members = set()
 
-    # Combine both: members who cancelled OR became inactive
-    quit_members = stopped_members | inactive_members
+    if recurring_col:
+        for email in df_memberships[contact_col].unique():
+            if email not in stopped_members:  # Don't double count stopped members
+                member_payments = df_memberships[df_memberships[contact_col] == email].sort_values(date_col)
+                recurring_status = member_payments[recurring_col].iloc[-1] if not pd.isna(member_payments[recurring_col].iloc[-1]) else ''
+                last_payment = member_payments[date_col].max()
+                days_since_last = (now - last_payment).days
+
+                # If status is "Past due" and it's been 15+ days since last payment, they quit
+                if 'past due' in str(recurring_status).lower() and days_since_last >= 15:
+                    late_quit_members.add(email)
+                elif 'past due' in str(recurring_status).lower():
+                    past_due_members.add(email)  # Track members who are past due but < 15 days
+
+    print(f"Found {len(late_quit_members)} members who are Past Due for 15+ days")
+
+    # Combine both: members who officially stopped OR are 15+ days late
+    quit_members = stopped_members | late_quit_members
     quit_count = len(quit_members)
+
+    # Current active members are those who paid in last 45 days and haven't stopped
+    current_members = recent_payments[contact_col].unique()
 
     # Calculate average payment per member type
     avg_payment_by_type = recent_payments.groupby('Membership Type')[amount_col].mean().to_dict() if amount_col in recent_payments.columns else {}
@@ -218,16 +237,18 @@ def analyze_payments(file_path):
         last_payment = member_data[date_col].max()
         days_since_last = (now - last_payment).days
 
-        # Only include if they quit in the last 30 days
-        # (either stopped recurring recently OR last payment was 30-60 days ago)
+        # Determine quit reason
         is_stopped = email in stopped_members
-
-        # Skip if they're not recently quit (not stopped and last payment > 30 days ago)
-        if not is_stopped and days_since_last > 30:
-            continue
+        is_late_quit = email in late_quit_members
 
         membership_type = member_data['Membership Type'].iloc[-1]
-        quit_reason = 'Cancelled (Recurring Stopped)' if is_stopped else 'Inactive (No recent payment)'
+
+        if is_stopped:
+            quit_reason = 'Cancelled (Recurring Stopped)'
+        elif is_late_quit:
+            quit_reason = 'Past Due 15+ days'
+        else:
+            quit_reason = 'Inactive (No recent payment)'
 
         # Get recurring status
         recurring_status = 'Unknown'
@@ -286,8 +307,9 @@ def analyze_payments(file_path):
         if recurring_col and not member_data.empty:
             recurring_status = member_data[recurring_col].iloc[-1] if not pd.isna(member_data[recurring_col].iloc[-1]) else 'Unknown'
 
-        # Late if: recurring not stopped AND last payment was 30-90 days ago
-        if recurring_status != 'Stopped' and 30 < days_since_last <= 90:
+        # Late if: status is "Past due" AND less than 15 days since last payment
+        # After 15 days past due, they're moved to "Recently Quit"
+        if 'past due' in str(recurring_status).lower() and days_since_last < 15:
             membership_type = member_data['Membership Type'].iloc[-1]
 
             # Get name
