@@ -717,8 +717,8 @@
         }
 
         function getResponsiveLayout(count, containerType = 'default', containerElement = null) {
-            // Truly dynamic layout - scales infinitely based on content
-            // Measures actual container and calculates optimal fit
+            // Truly dynamic layout - prioritizes showing ALL items
+            // Tries different layouts and picks the one with best font size that fits
 
             let availableHeight = 600;  // Default estimate
             let availableWidth = 400;   // Default estimate
@@ -727,8 +727,8 @@
             if (containerElement && containerElement.parentElement) {
                 const parent = containerElement.parentElement;
                 const parentRect = parent.getBoundingClientRect();
-                availableHeight = parentRect.height - 80; // Subtract header space
-                availableWidth = parentRect.width - 40;   // Subtract padding
+                availableHeight = parentRect.height - 100; // Subtract header space
+                availableWidth = parentRect.width - 40;    // Subtract padding
             }
 
             // Define size ranges (fontSize in px, padding in px, minLineHeight in px)
@@ -746,14 +746,14 @@
                 { fontSize: 6, padding: 2, lineHeight: 14 },
             ];
 
-            // Try to find a layout that fits without scrolling
-            for (let columns = 1; columns <= 6; columns++) {
-                for (const size of sizes) {
+            // Try each font size, and for each size try increasing columns until it fits
+            for (const size of sizes) {
+                for (let columns = 1; columns <= 8; columns++) {
                     const rowsNeeded = Math.ceil(count / columns);
                     const totalHeight = rowsNeeded * size.lineHeight;
 
                     if (totalHeight <= availableHeight) {
-                        // Found a fit!
+                        // Found a fit! Return immediately with best (largest) font that works
                         return {
                             columns: columns,
                             fontSize: size.fontSize + 'px',
@@ -765,7 +765,7 @@
 
             // If nothing fits, use smallest size with most columns
             return {
-                columns: 6,
+                columns: 8,
                 fontSize: '6px',
                 padding: '2px 4px'
             };
