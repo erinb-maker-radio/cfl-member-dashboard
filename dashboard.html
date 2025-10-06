@@ -720,18 +720,37 @@
             // Truly dynamic layout - prioritizes showing ALL items
             // Tries different layouts and picks the one with best font size that fits
 
-            let availableHeight = 600;  // Default estimate
-            let availableWidth = 400;   // Default estimate
+            // Better default estimates based on actual grid layout
+            let availableHeight = 600;
+            let availableWidth = 400;
 
-            // Try to measure actual container if provided
+            if (containerType === 'active') {
+                // Active Members: 4/12 columns = ~33% width, top row
+                availableHeight = 550;
+                availableWidth = 500;
+            } else if (containerType === 'volunteer') {
+                // Volunteers: 4/12 columns, bottom row (shorter)
+                availableHeight = 400;
+                availableWidth = 500;
+            } else {
+                // New/Late/Quit: varying widths, top row
+                // Quit is narrowest at 2/12 = ~17% width
+                availableHeight = 550;
+                availableWidth = 250; // Conservative estimate for narrowest box
+            }
+
+            // Try to measure actual container if provided (this is more accurate)
             if (containerElement && containerElement.parentElement) {
                 const parent = containerElement.parentElement;
                 const parentRect = parent.getBoundingClientRect();
-                availableHeight = parentRect.height - 100 - extraHeight; // Subtract header + extra space
-                availableWidth = parentRect.width - 40;    // Subtract padding
-            } else {
-                availableHeight -= extraHeight; // Still subtract extra height from estimate
+                if (parentRect.height > 0 && parentRect.width > 0) {
+                    availableHeight = parentRect.height - 100 - extraHeight; // Subtract header + extra space
+                    availableWidth = parentRect.width - 40;    // Subtract padding
+                }
             }
+
+            // Subtract extra height regardless
+            availableHeight -= extraHeight;
 
             // Define size ranges (fontSize in px, padding in px, minLineHeight in px)
             const sizes = [
