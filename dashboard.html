@@ -716,36 +716,59 @@
             return `${firstName} ${lastInitial}.`;
         }
 
-        function getResponsiveLayout(count, containerType = 'default') {
-            // Design rules for optimal layout - NO SCROLL BARS
-            if (containerType === 'active') {
-                // Active Members (larger container, 50% width, top row = taller)
-                // Estimate: ~600px height, ~500px width available
-                if (count <= 8) return { columns: 1, fontSize: '18px', padding: '14px 18px' };
-                if (count <= 16) return { columns: 2, fontSize: '16px', padding: '12px 16px' };
-                if (count <= 24) return { columns: 2, fontSize: '14px', padding: '10px 14px' };
-                if (count <= 36) return { columns: 3, fontSize: '13px', padding: '9px 12px' };
-                if (count <= 48) return { columns: 3, fontSize: '11px', padding: '7px 10px' };
-                if (count <= 60) return { columns: 4, fontSize: '10px', padding: '6px 8px' };
-                return { columns: 4, fontSize: '9px', padding: '5px 7px' };
-            } else if (containerType === 'volunteer') {
-                // Volunteers (bottom row, less height ~400px, ~400px width)
-                if (count <= 4) return { columns: 1, fontSize: '14px', padding: '10px 12px' };
-                if (count <= 8) return { columns: 2, fontSize: '13px', padding: '9px 11px' };
-                if (count <= 12) return { columns: 2, fontSize: '11px', padding: '7px 9px' };
-                if (count <= 16) return { columns: 3, fontSize: '10px', padding: '6px 8px' };
-                if (count <= 24) return { columns: 3, fontSize: '9px', padding: '5px 7px' };
-                return { columns: 4, fontSize: '8px', padding: '4px 6px' };
-            } else {
-                // New Members, Quit (top row, 25% width, tall ~600px)
-                // Estimate: ~600px height, ~250px width available
-                if (count <= 8) return { columns: 1, fontSize: '15px', padding: '11px 13px' };
-                if (count <= 16) return { columns: 1, fontSize: '13px', padding: '9px 11px' };
-                if (count <= 24) return { columns: 2, fontSize: '12px', padding: '8px 10px' };
-                if (count <= 32) return { columns: 2, fontSize: '11px', padding: '7px 9px' };
-                if (count <= 40) return { columns: 2, fontSize: '10px', padding: '6px 8px' };
-                return { columns: 3, fontSize: '9px', padding: '5px 7px' };
+        function getResponsiveLayout(count, containerType = 'default', containerElement = null) {
+            // Truly dynamic layout - scales infinitely based on content
+            // Measures actual container and calculates optimal fit
+
+            let availableHeight = 600;  // Default estimate
+            let availableWidth = 400;   // Default estimate
+
+            // Try to measure actual container if provided
+            if (containerElement && containerElement.parentElement) {
+                const parent = containerElement.parentElement;
+                const parentRect = parent.getBoundingClientRect();
+                availableHeight = parentRect.height - 80; // Subtract header space
+                availableWidth = parentRect.width - 40;   // Subtract padding
             }
+
+            // Define size ranges (fontSize in px, padding in px, minLineHeight in px)
+            const sizes = [
+                { fontSize: 18, padding: 14, lineHeight: 50 },
+                { fontSize: 16, padding: 12, lineHeight: 44 },
+                { fontSize: 14, padding: 10, lineHeight: 38 },
+                { fontSize: 13, padding: 9, lineHeight: 35 },
+                { fontSize: 12, padding: 8, lineHeight: 32 },
+                { fontSize: 11, padding: 7, lineHeight: 29 },
+                { fontSize: 10, padding: 6, lineHeight: 26 },
+                { fontSize: 9, padding: 5, lineHeight: 23 },
+                { fontSize: 8, padding: 4, lineHeight: 20 },
+                { fontSize: 7, padding: 3, lineHeight: 17 },
+                { fontSize: 6, padding: 2, lineHeight: 14 },
+            ];
+
+            // Try to find a layout that fits without scrolling
+            for (let columns = 1; columns <= 6; columns++) {
+                for (const size of sizes) {
+                    const rowsNeeded = Math.ceil(count / columns);
+                    const totalHeight = rowsNeeded * size.lineHeight;
+
+                    if (totalHeight <= availableHeight) {
+                        // Found a fit!
+                        return {
+                            columns: columns,
+                            fontSize: size.fontSize + 'px',
+                            padding: size.padding + 'px ' + (size.padding + 2) + 'px'
+                        };
+                    }
+                }
+            }
+
+            // If nothing fits, use smallest size with most columns
+            return {
+                columns: 6,
+                fontSize: '6px',
+                padding: '2px 4px'
+            };
         }
 
         function createActiveList(members) {
@@ -759,7 +782,7 @@
             }
 
             const totalCount = activeMembers.length + stoppedMembers.length + (stoppedMembers.length > 0 ? 1 : 0); // +1 for divider
-            const layout = getResponsiveLayout(totalCount, 'active');
+            const layout = getResponsiveLayout(totalCount, 'active', container);
 
             // Apply dynamic styles
             const ulElement = container.querySelector('ul') || document.createElement('ul');
@@ -793,7 +816,7 @@
                 return;
             }
 
-            const layout = getResponsiveLayout(members.length, 'default');
+            const layout = getResponsiveLayout(members.length, 'default', container);
 
             let html = '<ul style="grid-template-columns: repeat(' + layout.columns + ', 1fr);">';
             members.forEach(m => {
@@ -814,7 +837,7 @@
                 return;
             }
 
-            const layout = getResponsiveLayout(members.length, 'default');
+            const layout = getResponsiveLayout(members.length, 'default', container);
 
             let html = '<ul style="grid-template-columns: repeat(' + layout.columns + ', 1fr);">';
             members.forEach(m => {
@@ -837,7 +860,7 @@
                 return;
             }
 
-            const layout = getResponsiveLayout(members.length, 'default');
+            const layout = getResponsiveLayout(members.length, 'default', container);
 
             let html = '<ul style="grid-template-columns: repeat(' + layout.columns + ', 1fr);">';
             members.forEach(m => {
@@ -862,7 +885,7 @@
                 return;
             }
 
-            const layout = getResponsiveLayout(volunteers.length, 'volunteer');
+            const layout = getResponsiveLayout(volunteers.length, 'volunteer', container);
 
             let html = '<ul style="grid-template-columns: repeat(' + layout.columns + ', 1fr);">';
             volunteers.forEach(m => {
