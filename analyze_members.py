@@ -171,7 +171,8 @@ def analyze_payments(file_path):
     # Build detailed member lists
     active_member_list = []
     for email in current_members:
-        member_data = recent_payments[recent_payments[contact_col] == email].sort_values(date_col)
+        # Get ALL payment history for this member (not just recent)
+        member_data = df_memberships[df_memberships[contact_col] == email].sort_values(date_col)
         first_payment = member_data[date_col].min()
         last_payment = member_data[date_col].max()
         days_as_member = (now - first_payment).days
