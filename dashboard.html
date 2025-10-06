@@ -716,7 +716,7 @@
             return `${firstName} ${lastInitial}.`;
         }
 
-        function getResponsiveLayout(count, containerType = 'default', containerElement = null) {
+        function getResponsiveLayout(count, containerType = 'default', containerElement = null, extraHeight = 0) {
             // Truly dynamic layout - prioritizes showing ALL items
             // Tries different layouts and picks the one with best font size that fits
 
@@ -727,8 +727,10 @@
             if (containerElement && containerElement.parentElement) {
                 const parent = containerElement.parentElement;
                 const parentRect = parent.getBoundingClientRect();
-                availableHeight = parentRect.height - 100; // Subtract header space
+                availableHeight = parentRect.height - 100 - extraHeight; // Subtract header + extra space
                 availableWidth = parentRect.width - 40;    // Subtract padding
+            } else {
+                availableHeight -= extraHeight; // Still subtract extra height from estimate
             }
 
             // Define size ranges (fontSize in px, padding in px, minLineHeight in px)
@@ -781,12 +783,13 @@
                 return;
             }
 
-            const totalCount = activeMembers.length + stoppedMembers.length + (stoppedMembers.length > 0 ? 1 : 0); // +1 for divider
-            const layout = getResponsiveLayout(totalCount, 'active', container);
+            // Count only actual member items (divider spans full width, doesn't count as a row item)
+            const totalItemCount = activeMembers.length + stoppedMembers.length;
 
-            // Apply dynamic styles
-            const ulElement = container.querySelector('ul') || document.createElement('ul');
-            ulElement.style.gridTemplateColumns = `repeat(${layout.columns}, 1fr)`;
+            // Account for divider height if we have stopped members
+            const dividerHeight = stoppedMembers.length > 0 ? 24 : 0;
+
+            const layout = getResponsiveLayout(totalItemCount, 'active', container, dividerHeight);
 
             let html = '<ul style="grid-template-columns: repeat(' + layout.columns + ', 1fr);">';
             activeMembers.forEach(m => {
